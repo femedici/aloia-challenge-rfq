@@ -1,0 +1,10 @@
+{
+  "eventId": "evt_01JC3A2002",
+  "type": "rfq.item_canceled",
+  "occurredAt": "2026-11-02T17:02:19Z",
+  "data": {
+    "rfqId": "RFQ-1002",
+    "lineNumber": 2,
+    "reason": "Quantidade revista pelo cliente"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eventId": "evt_01JC3A1001",
+  "type": "rfq.created",
+  "occurredAt": "2026-11-02T13:05:12Z",
+  "data": {
+    "rfqId": "RFQ-1001",
+    "customer": { "code": "C-0042", "name": "Skyline Air Services" },
+    "items": [
+      { "lineNumber": 1, "partNumber": " ab-2231/04 ", "description": "Bracket, hinge", "quantity": 3, "unit": "each", "requiredBy": "14-Nov-26" },
+      { "lineNumber": 2, "partNumber": "qk-4471-88", "description": "Seal ring", "quantity": 10, "unit": "pcs", "requiredBy": "2026-11-20" },
+      { "lineNumber": 3, "partNumber": "MS 2047.0", "description": "Rivet, solid", "quantity": 50, "unit": "UN", "requiredBy": "11/28/2026" },
+      { "lineNumber": 4, "partNumber": "AB2231-04", "description": "Hinge bracket", "quantity": 3, "unit": "EA", "requiredBy": "2026-12-01" },
+      { "lineNumber": 5, "partNumber": "X1", "description": "Spacer", "quantity": 2, "unit": "EA", "requiredBy": "2026-12-01" },
+      { "lineNumber": 6, "partNumber": "HX-500-12", "description": "Hex bolt", "quantity": 0, "unit": "EA", "requiredBy": "2026-12-01" },
+      { "lineNumber": 7, "partNumber": "TR-88-1", "description": "Terminal ring", "quantity": 4, "unit": "box", "requiredBy": "2026-12-01" },
+      { "lineNumber": 8, "partNumber": "LN-7781-A", "description": "Hydraulic line", "quantity": 12, "unit": "ft", "requiredBy": "25/11/2026" },
+      { "lineNumber": 9, "partNumber": "PX-1201", "description": "Repair kit", "quantity": 1, "unit": "kit", "requiredBy": "05/06/2027" },
+      { "lineNumber": 10, "partNumber": "RV-332-9", "description": "Check valve", "quantity": 6, "unit": "EA", "requiredBy": "2026-02-31" }
+    ]
+  }
+}

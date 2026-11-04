@@ -1,0 +1,6 @@
+{
+  "EA": ["EA", "EACH", "UN", "UNIT", "UNITS"],
+  "PC": ["PC", "PCS", "PIECE", "PIECES"],
+  "FT": ["FT", "FEET", "FOOT"],
+  "KT": ["KT", "KIT", "KITS"]
+}

@@ -1,0 +1,14 @@
+{
+  "eventId": "evt_01JC3A2001",
+  "type": "rfq.created",
+  "occurredAt": "2026-11-02T16:10:44Z",
+  "data": {
+    "rfqId": "RFQ-1002",
+    "customer": { "code": "C-0107", "name": "Northwind Cargo" },
+    "items": [
+      { "lineNumber": 1, "partNumber": "NW-1100-02", "description": "Gasket", "quantity": 2, "unit": "EA", "requiredBy": "2026-11-30" },
+      { "lineNumber": 2, "partNumber": "NW-1100-03", "description": "Gasket, large", "quantity": 5, "unit": "PC", "requiredBy": "30-Nov-26" },
+      { "lineNumber": 3, "partNumber": "zx 9000 01", "description": "Actuator", "quantity": 1, "unit": "EA", "requiredBy": "2026-12-15" }
+    ]
+  }
+}

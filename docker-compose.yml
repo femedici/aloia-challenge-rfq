@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      retries: 20
+
+  fake-erp:
+    build: ./fake-erp
+    environment:
+      ERP_API_TOKEN: ${ERP_API_TOKEN}
+      ERP_MODE: ${ERP_MODE:-chaos}
+    ports:
+      - "${ERP_PORT:-4000}:4000"

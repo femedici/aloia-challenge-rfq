@@ -1,0 +1,6 @@
+{
+  "_comment": "Taxas fixas do desafio: quantos USD vale 1 unidade de cada moeda.",
+  "USD": "1",
+  "EUR": "1.085",
+  "BRL": "0.185"
+}

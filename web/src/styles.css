@@ -1,0 +1,82 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  color: #1f2328;
+  background: #fff;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.rfq-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #e5e7eb;
+}
+
+.badge.quoted,
+.badge.READY {
+  background: #dcfce7;
+}
+
+.badge.invalid,
+.badge.INVALID {
+  background: #fee2e2;
+}
+
+.badge.no_quote,
+.badge.canceled,
+.badge.CLOSED {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+button {
+  font: inherit;
+  padding: 4px 10px;
+  cursor: pointer;
+}
