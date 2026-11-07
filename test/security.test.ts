@@ -34,7 +34,7 @@ describe('API authentication', () => {
   test.each([
     ['get', '/health'], ['get', '/rfqs'], ['get', '/rfqs/TEST'],
     ['put', '/rfqs/TEST/items/1/quote'], ['post', '/rfqs/TEST/items/1/no-quote'],
-    ['post', '/webhooks/rfq'],
+    ['post', '/webhooks/rfq'], ['post', '/rfqs/TEST/submit'],
   ])('%s %s rejects absent and wrong keys', async (method, path) => {
     for (const candidate of [undefined, 'wrong-key', 'x'.repeat(key.length)]) {
       const call = request(app.getHttpServer())[method](path);

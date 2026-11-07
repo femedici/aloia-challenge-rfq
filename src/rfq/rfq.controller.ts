@@ -1,4 +1,5 @@
-import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { RfqService } from './rfq.service';
 
@@ -22,6 +23,13 @@ export class RfqController {
         createdAt: rfq.createdAt,
       };
     });
+  }
+
+  @Post(':rfqId/submit')
+  async submit(@Param('rfqId') rfqId: string, @Res({ passthrough: true }) response: Response) {
+    const submission = await this.rfqService.submit(rfqId);
+    response.status(['sent', 'failed'].includes(submission.status) ? 200 : 202);
+    return submission;
   }
 
   @Get(':rfqId')

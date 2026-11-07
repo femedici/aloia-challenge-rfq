@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   HttpCode,
@@ -12,6 +11,7 @@ import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { RfqService } from './rfq.service';
+import { validateWebhookEvent } from '../common/validation';
 import { ApiKeyGuard } from '../common/api-key.guard';
 
 @Controller('webhooks')
@@ -21,7 +21,7 @@ export class WebhookController {
 
   @Post('rfq')
   @HttpCode(200)
-  async receive(@Req() req: RawBodyRequest<Request>, @Body() body: any) {
+  async receive(@Req() req: RawBodyRequest<Request>, @Body() body: unknown) {
     const secret = process.env.WEBHOOK_SECRET;
     const signature = req.headers['x-signature'];
     if (!secret || !req.rawBody || typeof signature !== 'string' || !/^sha256=[a-f0-9]{64}$/.test(signature)) {
@@ -32,13 +32,8 @@ export class WebhookController {
       throw new UnauthorizedException('assinatura inválida');
     }
 
-    switch (body?.type) {
-      case 'rfq.created':
-      case 'rfq.item_canceled':
-        await this.rfqService.processEvent(body);
-        return { ok: true };
-      default:
-        throw new BadRequestException(`tipo de evento não suportado: ${body?.type}`);
-    }
+    validateWebhookEvent(body);
+    await this.rfqService.processEvent(body);
+    return { ok: true };
   }
 }

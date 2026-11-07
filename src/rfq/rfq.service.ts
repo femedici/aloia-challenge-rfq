@@ -1,7 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { fxRates } from '../common/data';
+import { calculateQuote } from '../common/price';
+import { validatePagination } from '../common/validation';
+import { RfqSubmission } from '../erp/rfq-submission.entity';
+import type { QuoteInput, RfqCanceledEvent, RfqCreatedEvent } from './rfq.types';
+export type { QuoteInput } from './rfq.types';
 import {
   isBlacklisted,
   isValidPartNumber,
@@ -14,42 +18,6 @@ import { RfqItem } from './rfq-item.entity';
 import { RfqEventRecord } from './rfq-event.entity';
 
 export type RfqStatus = 'INVALID' | 'OPEN' | 'IN_PROGRESS' | 'READY' | 'CLOSED';
-
-export interface RfqCreatedEvent {
-  eventId: string;
-  type: 'rfq.created';
-  occurredAt: string;
-  data: {
-    rfqId: string;
-    customer: { code: string; name: string };
-    items: {
-      lineNumber: number;
-      partNumber: string;
-      description?: string;
-      quantity: number;
-      unit: string;
-      requiredBy?: string;
-    }[];
-  };
-}
-
-export interface RfqCanceledEvent {
-  eventId: string;
-  type: 'rfq.item_canceled';
-  occurredAt: string;
-  data: { rfqId: string; lineNumber: number; reason: string };
-}
-
-export interface QuoteInput {
-  supplier: string;
-  currency: string;
-  unitCost: string;
-  moq: number;
-  freight?: string;
-  otherCharges?: string;
-  customs?: string;
-  marginPercent: string;
-}
 
 @Injectable()
 export class RfqService {
@@ -144,7 +112,7 @@ export class RfqService {
     }
     item.unit = unit;
 
-    if (i.requiredBy) {
+    if (i.requiredBy !== undefined) {
       item.requiredBy = parseRequiredBy(i.requiredBy);
       if (!item.requiredBy) item.warnings.push('invalid_required_by');
     }
@@ -179,16 +147,54 @@ export class RfqService {
     const rfq = await this.rfqs.findOne({ where: { rfqId }, relations: { items: true } });
     if (!rfq) throw new NotFoundException(`RFQ ${rfqId} não encontrado`);
     rfq.items.sort((a, b) => a.lineNumber - b.lineNumber);
-    return { ...rfq, status: this.deriveStatus(rfq.items) };
+    const submission = await this.rfqs.manager.getRepository(RfqSubmission).findOneBy({ rfqId });
+    return { ...rfq, status: this.deriveStatus(rfq.items), submission: this.submissionView(submission) };
   }
 
   async list(page: number, pageSize: number) {
+    validatePagination(page, pageSize);
     return this.rfqs.find({
       relations: { items: true },
       order: { createdAt: 'DESC', rfqId: 'ASC' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
+  }
+
+  private submissionView(submission: RfqSubmission | null) {
+    return {
+      status: submission?.status ?? 'not_sent', attempts: submission?.attempts ?? 0,
+      startedAt: submission?.startedAt ?? null, completedAt: submission?.completedAt ?? null,
+      nextAttemptAt: submission?.nextAttemptAt ?? null, erpOrderId: submission?.erpOrderId ?? null,
+      lastError: submission?.lastError ?? null,
+    };
+  }
+
+  async submit(rfqId: string) {
+    return this.rfqs.manager.transaction(async (manager) => {
+      await this.lockRfq(manager, rfqId);
+      const submissions = manager.getRepository(RfqSubmission);
+      const existing = await submissions.findOneBy({ rfqId });
+      if (existing) return this.submissionView(existing);
+      const rfq = await manager.getRepository(Rfq).findOne({ where: { rfqId }, relations: { items: true } });
+      if (!rfq) throw new NotFoundException(`RFQ ${rfqId} não encontrado`);
+      if (this.deriveStatus(rfq.items) !== 'READY') throw new ConflictException('RFQ precisa estar READY para enviar ao ERP');
+      const submission = await submissions.save(submissions.create({
+        rfqId, payload: {
+          externalId: rfqId, customerCode: rfq.customerCode, currency: 'USD',
+          lines: rfq.items.filter(item => item.status === 'quoted').sort((a, b) => a.lineNumber - b.lineNumber)
+            .map(item => ({ lineNumber: item.lineNumber, partNumber: item.partNumber!, quantity: item.quantity,
+              unit: item.unit!, unitPrice: item.unitPriceUsd! })),
+        },
+      }));
+      return this.submissionView(submission);
+    });
+  }
+
+  private async assertEditable(manager: EntityManager, rfqId: string) {
+    if (await manager.getRepository(RfqSubmission).existsBy({ rfqId })) {
+      throw new ConflictException('RFQ já enviado para processamento no ERP; cotação congelada');
+    }
   }
 
   private async findItem(manager: EntityManager, rfqId: string, lineNumber: number) {
@@ -203,36 +209,22 @@ export class RfqService {
   async quoteItem(rfqId: string, lineNumber: number, input: QuoteInput) {
     return this.rfqs.manager.transaction(async (manager) => {
       await this.lockRfq(manager, rfqId);
+      await this.assertEditable(manager, rfqId);
       const item = await this.findItem(manager, rfqId, lineNumber);
       if (item.status !== 'pending' && item.status !== 'quoted') {
         throw new ConflictException(`Item em status ${item.status} não pode ser cotado`);
       }
-
-      const rates = fxRates;
-      if (!rates[input.currency] || input.currency.startsWith('_')) {
-        throw new BadRequestException('currency inválida');
-      }
-      const unitCost = Number(input.unitCost);
-      const margin = Number(input.marginPercent);
-      if (!(unitCost > 0)) throw new BadRequestException('unitCost deve ser maior que 0');
-      if (!(margin >= 0 && margin <= 300)) throw new BadRequestException('marginPercent deve estar entre 0 e 300');
-
-      const fees = Number(input.freight ?? 0) + Number(input.otherCharges ?? 0) + Number(input.customs ?? 0);
-      const purchasedQty = Math.max(item.quantity, input.moq ?? 0);
-      const unitLanded = (unitCost * purchasedQty + fees) / item.quantity;
-      const unitPrice = unitLanded * (1 + margin / 100) * Number(rates[input.currency]);
 
       Object.assign(item, {
         supplier: input.supplier,
         currency: input.currency,
         unitCost: input.unitCost,
         moq: input.moq,
-        freight: input.freight,
-        otherCharges: input.otherCharges,
-        customs: input.customs,
+        freight: input.freight ?? '0',
+        otherCharges: input.otherCharges ?? '0',
+        customs: input.customs ?? '0',
         marginPercent: input.marginPercent,
-        unitPriceUsd: unitPrice.toFixed(2),
-        totalPriceUsd: (Number(unitPrice.toFixed(2)) * item.quantity).toFixed(2),
+        ...calculateQuote(item.quantity, input),
         status: 'quoted',
       });
       return manager.getRepository(RfqItem).save(item);
@@ -242,6 +234,7 @@ export class RfqService {
   async noQuote(rfqId: string, lineNumber: number) {
     return this.rfqs.manager.transaction(async (manager) => {
       await this.lockRfq(manager, rfqId);
+      await this.assertEditable(manager, rfqId);
       const item = await this.findItem(manager, rfqId, lineNumber);
       if (item.status !== 'pending' && item.status !== 'quoted') {
         throw new ConflictException(`Item em status ${item.status} não pode virar no_quote`);

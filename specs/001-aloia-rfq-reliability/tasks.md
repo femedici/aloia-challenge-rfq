@@ -15,33 +15,37 @@ Each implementation task uses RED -> GREEN -> review; task status remains in_pro
   - Status: done; agent: root; dependencies: T001; requirements: FR-001–004, FR-012, FR-015, FR-023.
   - Acceptance: concurrent/repeated event returns 2xx once, first creation wins, reordered cancellation persists, shared status agrees, no terminal item revival.
   - Verification: `npm test -- --runInBand test/rfq-events.test.ts`; real PostgreSQL concurrency and rollback tests.
-  - Evidence: 11 PostgreSQL event tests pass after observed RED; full current suite 39 tests and API build pass. Coordinator reviewed diff.
+  - Evidence: populated legacy migration preserves IDs, quantities and quotations; 11 PostgreSQL event tests pass after observed RED; full current suite 39 tests and API build pass. Coordinator reviewed diff.
   - Blocker: none; next: integrate domain and ERP work.
 
 ## Phase 3: User story 2 — ERP delivery
-- [ ] T003 [P] [US2] Build durable delivery and ERP error/reconciliation handling in `src/erp/**` and `test/erp*.test.ts`.
-  - Status: in_progress; agent: erp_delivery; dependencies: T001; requirements: FR-007–009, FR-012, FR-023.
+- [x] T003 [P] [US2] Build durable delivery and ERP error/reconciliation handling in `src/erp/**` and `test/erp*.test.ts`.
+  - Status: done; agent: erp_delivery; dependencies: T001; requirements: FR-007–009, FR-012, FR-023.
   - Acceptance: durable state, serialized workers, 422 permanent, 429/503 safe retry, uncertain outcome reconciliation, restart and duplicate protection.
   - Verification: targeted ERP Jest suites with real PostgreSQL and local HTTP servers; `npm run build`.
-  - Blocker: none; next: isolated worktree and RED tests; interface contract in contracts/api.md.
+  - Evidence: coordinator reviewed and integrated 360dffc; 39 ERP tests and build pass; independent reviewer found no defects.
+  - Blocker: none; next: integrated submit validation.
 - [ ] T004 [US2] Integrate submit snapshot and detail delivery state in `src/rfq/rfq.service.ts`, `rfq.controller.ts`, `rfq.module.ts` and `test/rfq-submit.test.ts`.
-  - Status: pending; agent: root; dependencies: T002,T003,T005; requirements: FR-005–008, FR-012.
+  - Status: in_progress; agent: root; dependencies: T002,T003,T005; requirements: FR-005–008, FR-012.
   - Acceptance: READY-only first submit, one immutable quoted-only payload, repeated submit returns existing state, all detail items retained.
   - Verification: concurrent HTTP submits, non-READY 409, late cancellation, atomic snapshot/quote races.
-  - Blocker: predecessors; next: integrate reviewed writer commits one at a time.
+  - Evidence: 26 API integration tests pass, including concurrent submit and snapshot immutability.
+  - Blocker: none; next: independent review and remaining state/race cases.
 
 ## Phase 4: User story 3 — domain correctness and security
-- [ ] T005 [P] [US3] Fix normalization/dates/pricing and validate payloads in `src/common/normalize.ts`, `price.ts`, `validation.ts`, `src/rfq/rfq.types.ts`, `test/domain.test.ts`, `test/normalize.test.ts`.
-  - Status: in_progress; agent: domain_rules; dependencies: T001; requirements: FR-016–020, FR-025.
+- [x] T005 [P] [US3] Fix normalization/dates/pricing and validate payloads in `src/common/normalize.ts`, `price.ts`, `validation.ts`, `src/rfq/rfq.types.ts`, `test/domain.test.ts`, `test/normalize.test.ts`.
+  - Status: done; agent: domain_rules; dependencies: T001; requirements: FR-016–020, FR-025.
   - Acceptance: original data preserved, exact half-up example and ties, real dates independent of timezone, normalized blacklist, clear runtime validation.
   - Verification: domain/normalization Jest tests for valid/invalid inputs and monetary boundaries; build.
-  - Blocker: none; next: isolated worktree, RED regressions then minimal helpers per contracts/api.md.
+  - Evidence: coordinator reviewed and integrated 5bf01e2 and 9bd167e; 177 tests and build pass. Domain helpers have 100% coverage.
+  - Blocker: none; next: integrated API verification.
 - [ ] T006 [US3] Integrate API-wide authentication, validated startup, payload helpers and pagination in `src/common/api-key.guard.ts`, `config.ts`, `src/main.ts`, `src/app.module.ts`, RFQ controllers/service, `scripts/send-webhooks.mjs`, `test/security.test.ts`.
   - Status: in_progress; agent: root; dependencies: T002,T005; requirements: FR-013, FR-019–020, FR-024–025.
   - Acceptance: missing/wrong key fails every route, HMAC remains required, malformed payload 400, missing config fails before listen.
   - Verification: HTTP security matrix, startup tests, domain/HTTP integration and builds.
   - Evidence: authentication matrix and startup validation pass (28 tests combined); payload/pagination integration pending T005.
-  - Blocker: T005 integration; next: wire validated helpers.
+  - Evidence: validators wired; 281 backend tests pass; all routes, including webhook/submit, require the API key.
+  - Blocker: none; next: independent review.
 
 ## Phase 5: User story 4 — interface after core validation
 - [ ] T007 [US4] Implement submission controls, polling, pagination, accessible feedback and Aloia styling in `web/src/`.
