@@ -52,6 +52,7 @@ describe('ERP delivery worker with real PostgreSQL and HTTP', () => {
   let workers: ErpSubmissionWorker[];
   let orders: { id: string; externalId: string }[];
   let posted: ErpOrder[];
+  let lookups: number;
   let lookupStatus: number;
   let lookupBody: unknown;
   let postStatus: number;
@@ -70,6 +71,7 @@ describe('ERP delivery worker with real PostgreSQL and HTTP', () => {
     workers = [];
     orders = [];
     posted = [];
+    lookups = 0;
     lookupStatus = 200;
     postStatus = 201;
     lookupBody = undefined;
@@ -80,6 +82,7 @@ describe('ERP delivery worker with real PostgreSQL and HTTP', () => {
       let body = '';
       for await (const chunk of req) body += chunk;
       if (req.method === 'GET') {
+        lookups++;
         res.writeHead(lookupStatus, { 'content-type': 'application/json' });
         res.end(JSON.stringify(lookupBody ?? { orders }));
         return;
@@ -177,6 +180,24 @@ describe('ERP delivery worker with real PostgreSQL and HTTP', () => {
     expect(posted).toHaveLength(1);
   });
 
+  it.each([400, 401, 422])('records permanent preflight lookup %s without posting or retrying', async (status) => {
+    await seed();
+    lookupStatus = status;
+    const instance = worker();
+    await instance.runOnce();
+    expect(await current()).toMatchObject({
+      status: 'failed', attempts: 0, erpOrderId: null, nextAttemptAt: null,
+      lastError: expect.stringContaining(String(status)),
+    });
+    expect((await current()).completedAt).toBeInstanceOf(Date);
+    lookupStatus = 200;
+    await due();
+    await instance.runOnce();
+    expect(await current()).toMatchObject({ status: 'failed', attempts: 0 });
+    expect(lookups).toBe(1);
+    expect(posted).toHaveLength(0);
+  });
+
   it.each([429, 503])('reschedules explicit no-write POST %s and sends safely when due', async (status) => {
     await seed();
     postStatus = status;
@@ -260,7 +281,7 @@ describe('ERP delivery worker with real PostgreSQL and HTTP', () => {
     expect(posted).toHaveLength(1);
   }, 8_000);
 
-  it('starts delivery automatically and waits for in-flight work on shutdown', async () => {
+  it('starts delivery automatically and waits for in-flight work before application shutdown', async () => {
     await seed();
     const entered = deferred();
     const finish = deferred();
@@ -273,7 +294,7 @@ describe('ERP delivery worker with real PostgreSQL and HTTP', () => {
     instance.onApplicationBootstrap();
     await entered.promise;
     let stopped = false;
-    const shutdown = instance.onApplicationShutdown().then(() => { stopped = true; });
+    const shutdown = instance.beforeApplicationShutdown().then(() => { stopped = true; });
     try {
       await new Promise((done) => setImmediate(done));
       expect(stopped).toBe(false);
