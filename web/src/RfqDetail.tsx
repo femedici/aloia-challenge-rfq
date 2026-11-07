@@ -74,7 +74,7 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
   const submission = rfq.submission;
   const hasSubmission = submission.status !== 'not_sent';
   const itemsLocked = hasSubmission || submit.isPending || checkingSubmission;
-  const canSubmit = rfq.status === 'READY' && !itemsLocked && !noQuote.isPending;
+  const canSubmit = rfq.status === 'READY' && !hasSubmission && !submit.isPending && !noQuote.isPending;
   const active = activeStatuses.includes(submission.status);
 
   return (
@@ -98,7 +98,7 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
           <div className="submission-actions">
             <button className="secondary" disabled={isFetching} onClick={() => void refetch()}>Consultar situação</button>
             {!hasSubmission && <button disabled={!canSubmit} onClick={() => submit.mutate()} aria-describedby="submission-description">
-              {submit.isPending ? 'Solicitando envio…' : checkingSubmission ? 'Confirmando envio…' : 'Enviar ao ERP'}
+              {submit.isPending ? 'Solicitando envio…' : checkingSubmission ? 'Tentar envio novamente' : 'Enviar ao ERP'}
             </button>}
           </div>
         </div>
@@ -107,7 +107,7 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
           <p id="submission-description" className="submission-description">{submissionDescriptions[submission.status]}</p>
         </div>
         {checkingSubmission && !submit.isPending && !hasSubmission && (
-          <p className="notice" role="status">Não foi possível confirmar a solicitação. A situação está sendo consultada automaticamente antes de liberar novas alterações.</p>
+          <p className="notice" role="status">Não foi possível confirmar a solicitação. A situação está sendo consultada automaticamente. Se necessário, tente enviar novamente. As alterações nos itens aguardam a confirmação.</p>
         )}
         {submit.error && !hasSubmission && <p className="error" role="alert">Não foi possível confirmar o envio. {submit.error.message}</p>}
         {hasSubmission && <>
