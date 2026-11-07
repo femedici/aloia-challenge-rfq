@@ -15,12 +15,18 @@ export function App() {
   const [rfqId, setRfqId] = useState(currentRfqId);
   const [page, setPage] = useState(1);
   const main = useRef<HTMLElement>(null);
+  const previousRfqId = useRef(rfqId);
 
   useEffect(() => {
     const onChange = () => setRfqId(currentRfqId());
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);
+
+  useEffect(() => {
+    if (previousRfqId.current !== rfqId) main.current?.focus();
+    previousRfqId.current = rfqId;
+  }, [rfqId]);
 
   return (
     <>
