@@ -1,5 +1,9 @@
 # Data model
 
+TypeORM additionally creates the technical `migrations` table to track the quantity-preservation
+upgrade. It is not an application entity. The migration changes integer quantity to double precision
+in place so malformed numeric quantities remain auditable as invalid items without losing existing rows.
+
 - `rfq`: existing fields; unique rfqId; first serialized creation wins.
 - `rfq_item`: existing fields; unique parent + lineNumber; numeric quantity preserves invalid
   fractional input; cancellation reason may be nullable; invalid/canceled are terminal.

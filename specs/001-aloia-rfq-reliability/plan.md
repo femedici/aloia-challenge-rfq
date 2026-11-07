@@ -17,7 +17,8 @@ The visual update follows passing core behavior checks. No new runtime dependenc
 - Target: local Node API and Vite UI; existing compose database/ERP reused without reset.
 - Performance: no new throughput SLA; validate ten concurrent duplicate deliveries and submissions.
 - Constraints: no duplicate ERP side effects, secret-free logs/browser bundle, current file patterns.
-- Scope: 28 functional requirements, two new tables, existing API plus one submit endpoint.
+- Scope: 28 functional requirements, two domain tables plus TypeORM migration metadata,
+  existing API plus one submit endpoint.
 
 ## Constitution Check
 Before and after design: PASS. Scope and existing stack preserved; all requested improvements
@@ -54,3 +55,10 @@ Tests must load local configuration without printing credentials and only remove
 ## Complexity Tracking
 No constitution violations. Two small persistence entities are necessary for durable idempotency.
 A queue broker, new framework, and generalized workflow engine are unnecessary.
+
+## Verified upgrade adjustment
+Independent review demonstrated that TypeORM synchronization drops/recreates a column when changing
+integer to double precision. A native migration now runs first and uses PostgreSQL ALTER COLUMN TYPE,
+preserving existing IDs, quantities and quotations. TypeORM adds its `migrations` metadata table.
+The existing synchronization configuration remains; a full production migration rollout is documented
+as follow-up rather than expanding this feature. Downgrading fractional original quantities is refused.
