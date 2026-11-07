@@ -32,6 +32,10 @@ function decimal(value: unknown, field: string): asserts value is string {
   }
 }
 
+export function validateLineNumber(value: unknown): void {
+  integer(value, 'lineNumber');
+}
+
 export function validateWebhookEvent(value: unknown): asserts value is RfqEvent {
   object(value, 'event');
   identifier(value.eventId, 'eventId');

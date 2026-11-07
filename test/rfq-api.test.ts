@@ -142,5 +142,50 @@ describe('RFQ API and submission integration', () => {
     const result = await call('post', '/rfqs/FAILURE/submit').expect(200);
     expect(result.body).toMatchObject({ status: 'failed', lastError: 'ERP 422: invalid customer' });
     expect(await db.getRepository(RfqSubmission).countBy({ rfqId: 'FAILURE' })).toBe(1);
+    await call('put', '/rfqs/FAILURE/items/99/quote').send(quote).expect(404);
+    await call('post', '/rfqs/FAILURE/items/99/no-quote').expect(404);
+  });
+
+  test.each(['0', '-1', '2147483648', '9007199254740992'])('rejects out-of-range item route %s before database access', async line => {
+    await call('put', `/rfqs/PRICE/items/${line}/quote`).send(quote).expect(400);
+    await call('post', `/rfqs/PRICE/items/${line}/no-quote`).expect(400);
+  });
+
+  it('keeps invalid units and blacklisted parts final, and rejects INVALID/CLOSED submits', async () => {
+    await post(event('BAD-UNIT', [{ lineNumber: 1, partNumber: 'ABC123', quantity: 1, unit: 'UNKNOWN' }])).expect(200);
+    await post(event('BLACKLIST', [{ lineNumber: 1, partNumber: ' zx/9000.01 ', quantity: 1, unit: 'EA' }])).expect(200);
+    for (const [id, state, itemState] of [['BAD-UNIT', 'INVALID', 'invalid'], ['BLACKLIST', 'CLOSED', 'no_quote']]) {
+      const result = (await call('get', `/rfqs/${id}`).expect(200)).body;
+      expect(result.status).toBe(state);
+      expect(result.items[0].status).toBe(itemState);
+      await call('post', `/rfqs/${id}/submit`).expect(409);
+      await call('put', `/rfqs/${id}/items/1/quote`).send(quote).expect(409);
+      await call('post', `/rfqs/${id}/items/1/no-quote`).expect(409);
+    }
+  });
+
+  it('shares the RFQ transaction lock between submission and quotation edits', async () => {
+    await ready('SNAPSHOT-LOCK');
+    const runner = db.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    await runner.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['rfq:SNAPSHOT-LOCK']);
+    let finished = false;
+    const submit = call('post', '/rfqs/SNAPSHOT-LOCK/submit').then(response => { finished = true; return response; });
+    try {
+      await runner.query('SELECT pg_sleep(0.1)');
+      expect(finished).toBe(false);
+      const edit = call('put', '/rfqs/SNAPSHOT-LOCK/items/1/quote').send({ ...quote, unitCost: '999' }).then(response => response);
+      await runner.query('SELECT pg_sleep(0.1)');
+      await runner.commitTransaction();
+      expect((await submit).status).toBe(202);
+      expect((await edit).status).toBe(409);
+      const snapshot = await db.getRepository(RfqSubmission).findOneByOrFail({ rfqId: 'SNAPSHOT-LOCK' });
+      expect(snapshot.payload.lines[0].unitPrice).toBe('35.51');
+    } finally {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      await runner.release();
+      await submit;
+    }
   });
 });

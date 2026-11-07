@@ -209,8 +209,8 @@ export class RfqService {
   async quoteItem(rfqId: string, lineNumber: number, input: QuoteInput) {
     return this.rfqs.manager.transaction(async (manager) => {
       await this.lockRfq(manager, rfqId);
-      await this.assertEditable(manager, rfqId);
       const item = await this.findItem(manager, rfqId, lineNumber);
+      await this.assertEditable(manager, rfqId);
       if (item.status !== 'pending' && item.status !== 'quoted') {
         throw new ConflictException(`Item em status ${item.status} não pode ser cotado`);
       }
@@ -234,8 +234,8 @@ export class RfqService {
   async noQuote(rfqId: string, lineNumber: number) {
     return this.rfqs.manager.transaction(async (manager) => {
       await this.lockRfq(manager, rfqId);
-      await this.assertEditable(manager, rfqId);
       const item = await this.findItem(manager, rfqId, lineNumber);
+      await this.assertEditable(manager, rfqId);
       if (item.status !== 'pending' && item.status !== 'quoted') {
         throw new ConflictException(`Item em status ${item.status} não pode virar no_quote`);
       }
