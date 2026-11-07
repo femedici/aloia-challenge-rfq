@@ -6,7 +6,9 @@ Data: 7 de novembro de 2026 · America/Sao_Paulo.
 
 Implementação funcional concluída e validada: cancelamento e eventos idempotentes, envio único
 com reconciliação, validação/segurança/preços e interface Aloia com paginação, estados e feedback.
-README, contexto de agente e Spec Kit estão versionados. **Publicação da branch: pendente da última etapa.**
+README, contexto de agente e Spec Kit estão versionados. **Branch completa publicada e verificada:**
+`0f34a6300a8196552064a60eef8f9a7ba53f73ce` coincide com o remoto; o commit documental posterior
+registra este encerramento, sem alterar o código validado.
 
 - Interface: [http://127.0.0.1:5173/](http://127.0.0.1:5173/).
 - Exemplo pronto para testar: [RFQ-DEMO-022](http://127.0.0.1:5173/#/rfqs/RFQ-DEMO-022), READY e ainda não enviado.
@@ -59,7 +61,7 @@ Não foi solicitado PR neste projeto; nenhum foi aberto.
 | P9 / FR-009 | 422 permanente; 429/503 retry; timeout só reconcilia. | [src/erp/erp-submission.worker.ts:85](/Users/felipemedici/Documents/aloia-challenge-rfq/src/erp/erp-submission.worker.ts:85); [src/erp/erp.client.ts:56](/Users/felipemedici/Documents/aloia-challenge-rfq/src/erp/erp.client.ts:56) | 42 testes ERP; chaos real com tentativas 1/2/3 e um pedido por RFQ |
 | P10 / FR-010 | Botão READY, carregamento, motivo e repetição segura. | [web/src/RfqDetail.tsx:53](/Users/felipemedici/Documents/aloia-challenge-rfq/web/src/RfqDetail.tsx:53) | submit real→SO-1004; 503 simulado→retry utilizável; itens congelados |
 | P11 / FR-011 | Polling de 2 segundos enquanto ativo ou incerto. | [web/src/RfqDetail.tsx:36](/Users/felipemedici/Documents/aloia-challenge-rfq/web/src/RfqDetail.tsx:36) | Aguardando envio→Enviado com sucesso sem refresh manual |
-| P12 / FR-012 | Regressões de idempotência com banco e HTTP reais. | [test/rfq-events.test.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/test/rfq-events.test.ts:1); [test/rfq-api.test.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/test/rfq-api.test.ts:1); [test/erp-worker.test.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/test/erp-worker.test.ts:1) | concorrência, redelivery, snapshots e no máximo um POST seguro |
+| P12 / FR-012 | Regressões de idempotência com banco e HTTP reais. | [test/rfq-events.test.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/test/rfq-events.test.ts:1); [test/rfq-api.test.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/test/rfq-api.test.ts:1); [test/erp-worker.test.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/test/erp-worker.test.ts:1) | concorrência, redelivery, snapshots e no máximo um pedido no ERP, com retries seguros |
 | P13 / FR-013 | X-Api-Key em todos os endpoints; HMAC permanece no webhook. | [src/common/api-key.guard.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/src/common/api-key.guard.ts:1); [src/rfq/webhook.controller.ts:1](/Users/felipemedici/Documents/aloia-challenge-rfq/src/rfq/webhook.controller.ts:1) | matriz 401 de 7 rotas, chave errada de mesmo tamanho, assinatura forjada/corpo alterado |
 | P14 / FR-014 | Problemas corrigidos e pendências com impacto/recomendação. | [README.md:189](/Users/felipemedici/Documents/aloia-challenge-rfq/README.md:189) | revisão do diff e seis riscos concretos registrados |
 | S1 / FR-015 | Uma derivação de status para lista e detalhe. | [src/rfq/rfq.service.ts:135](/Users/felipemedici/Documents/aloia-challenge-rfq/src/rfq/rfq.service.ts:135); [src/rfq/rfq.controller.ts:22](/Users/felipemedici/Documents/aloia-challenge-rfq/src/rfq/rfq.controller.ts:22) | cinco estados; mistura pending+invalid mantém OPEN |
@@ -108,8 +110,10 @@ recuperação automática; não há timeout que autorize repetir cegamente o ped
 | Navegação/ações | Página 2 com 4 registros; retorno preserva página; teclado Enter/foco main; OPEN/CLOSED sem submit; no_quote sucesso e stale cancel 409 visíveis. |
 | UI com respostas controladas | Todos os 7 estados exibidos; 503 antes de aceite mantém retry utilizável; failed mostra motivo; retries e reconciliação exibem próxima execução. Fixture HTTP temporária sem acesso a banco/ERP, encerrada após o teste. |
 | Responsividade | Desktop e viewport 390×844; largura útil 375px e scrollWidth 375px após correção do rótulo oculto; apenas tabela rola horizontalmente. |
-| Segurança do bundle |Verificação sem valores secretos no JavaScript/CSS gerado; a chave fica no proxy Vite. |
+| Segurança do bundle | Verificação sem valores secretos no JavaScript/CSS gerado; a chave fica no proxy Vite. |
 | Documentação | Sintaxe bash do README validada; links locais e linhas conferidos. |
+| Convergência Spec Kit | 28 requisitos, 25 cenários de aceite, 5 critérios de sucesso, 8 decisões de arquitetura e 5 princípios conferidos; nenhuma lacuna missing/partial/contradicts/unrequested e nenhuma tarefa corretiva nova. |
+| Publicação | Commit completo 0f34a63 confere com origin; histórico original preservado; 62 arquivos novos incluídos e árvore limpa antes do encerramento documental. |
 
 Cobertura backend medida: **96,52% das linhas, 95,85% das instruções, 97% dos ramos e 95,65% das funções**.
 RFQ e ERP: **100% das linhas**; normalização, preços e validação: **100% de linhas/ramos/funções**.
@@ -128,8 +132,9 @@ Não se afirma 100% de cobertura global nem prova absoluta de correção.
 ## Tarefas e estado para retomada
 
 O tracker único é `specs/001-aloia-rfq-reliability/tasks.md`.
-T001–T007: concluídas e integradas. T008: revisão/convergência final. T009: handoff/documentação
-em finalização. T010: commit/push final pendente. Nenhum trabalho de implementação pendente conhecido.
+T001–T010: concluídas, integradas e verificadas pelo coordenador, incluindo convergência,
+documentação e publicação da branch. Nenhum trabalho de implementação pendente conhecido.
+Permanece apenas a decisão externa sobre o acesso do avaliador, descrita no início deste arquivo.
 Dependências: T002/T003/T005 paralelas; T004/T006 integram; T007 depois do core; T008→T009→T010.
 
 Agentes: root coordenou e integrou; domain_rules implementou domínio e depois UI em outra worktree;
@@ -144,7 +149,7 @@ recuperação de submit incerto, foco de navegação e overflow móvel.
 | `rfq_event` / `RfqEventRecord` | Idempotência global, payload e timestamps de eventos/cancelamentos. |
 | `rfq_submission` / `RfqSubmission` | Um snapshot e ciclo de envio por RFQ, tentativas, datas, ID e erro. |
 | `migrations` / metadados TypeORM | Tabela técnica que registra a execução da conversão preservadora de quantity; não é entidade de negócio. |
-| `POST /rfqs/:rfqId/submit` | Único endpoint novo da aplicação.202 ativo/200 terminal;409 novo envio fora de READY. |
+| `POST /rfqs/:rfqId/submit` | Único endpoint novo da aplicação. 202 ativo/200 terminal; 409 novo envio fora de READY. |
 
 `rfq.item_canceled` é um tipo novo no endpoint existente de webhook, não uma rota nova.
 Entidades existentes alteradas: `Rfq` ganha unicidade de rfqId; `RfqItem` ganha unicidade de linha
@@ -249,14 +254,15 @@ Lista completa relativa à raiz; inclui scaffold Spec Kit 1.0.3 autorizado e art
 Base original: `2e810cf1d1def232ffd086a63fb2d14b81b1e5d6`.
 `origin`: git@github.com:femedici/aloia-challenge-rfq.git.
 `upstream`: git@github.com:AloiaAerospace/aloia-challenge-rfq.git.
-Somente a branch integrada deve ser publicada. Branches auxiliares permanecem locais.
+Somente a branch integrada foi publicada. Branches auxiliares permanecem locais.
+As worktrees abaixo foram preservadas; consulte `git worktree list` para seus HEADs atuais.
 
 ```text
-/Users/felipemedici/Documents/aloia-challenge-rfq                            b25c294 [agent/aloia-rfq-reliability]
-/Users/felipemedici/.codex/worktrees/aloia-documentation/aloia-challenge-rfq ebe35c9 [agent/aloia-documentation]
-/Users/felipemedici/.codex/worktrees/aloia-domain-rules/aloia-challenge-rfq  9bd167e [agent/aloia-domain-rules]
-/Users/felipemedici/.codex/worktrees/aloia-erp-delivery/aloia-challenge-rfq  5a27f3a [agent/aloia-erp-delivery]
-/Users/felipemedici/.codex/worktrees/aloia-rfq-ui/aloia-challenge-rfq        dbba15c [agent/aloia-rfq-ui]
+/Users/felipemedici/Documents/aloia-challenge-rfq [agent/aloia-rfq-reliability]
+/Users/felipemedici/.codex/worktrees/aloia-documentation/aloia-challenge-rfq [agent/aloia-documentation]
+/Users/felipemedici/.codex/worktrees/aloia-domain-rules/aloia-challenge-rfq [agent/aloia-domain-rules]
+/Users/felipemedici/.codex/worktrees/aloia-erp-delivery/aloia-challenge-rfq [agent/aloia-erp-delivery]
+/Users/felipemedici/.codex/worktrees/aloia-rfq-ui/aloia-challenge-rfq [agent/aloia-rfq-ui]
 ```
 
 ## Riscos, limites e ações não autorizadas

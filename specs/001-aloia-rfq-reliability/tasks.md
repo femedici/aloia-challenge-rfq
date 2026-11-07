@@ -59,24 +59,27 @@ Each implementation task uses RED -> GREEN -> review; task status remains in_pro
   - Blocker: none; next: final convergence.
 
 ## Phase 6: Convergence, evidence and delivery
-- [ ] T008 Run comprehensive validation/convergence and close verified gaps in `test/`, feature artifacts and affected source.
-  - Status: in_progress; agent: root + independent reviewer; dependencies: T004,T006,T007; requirements: FR-001–026, SC-001–004.
+- [x] T008 Run comprehensive validation/convergence and close verified gaps in `test/`, feature artifacts and affected source.
+  - Status: done; agent: root + independent reviewer; dependencies: T004,T006,T007; requirements: FR-001–026, SC-001–004.
   - Acceptance: every rule has positive/negative evidence, real concurrent/chaos tests pass, measured coverage reported, browser verified.
   - Verification: full Jest with coverage, API/web builds, live smoke, independent diff review, speckit-converge.
   - Evidence: 290 tests/9 suites, API and web builds, live chaos and Edge scenarios pass. Final reviewer found no material defect; source-to-requirement matrix completed.
-  - Blocker: none; next: final Spec Kit convergence after publication verification.
-- [ ] T009 Write final `README.md`, corrected `AGENT.md` and `outputs/aloia-rfq-handoff.md`, including every requirement/code line and additions inventory.
-  - Status: in_progress; agent: root + erp_delivery (README); dependencies: T008; requirements: FR-014, FR-027–028, SC-001.
+  - Evidence: final Spec Kit convergence checked 28 FR, 25 acceptance scenarios, 5 SC, 8 architecture decisions and 5 constitution principles; zero gaps and zero new tasks.
+  - Blocker: none; next: none within implementation scope.
+- [x] T009 Write final `README.md`, corrected `AGENT.md` and `outputs/aloia-rfq-handoff.md`, including every requirement/code line and additions inventory.
+  - Status: done; agent: root + erp_delivery (README); dependencies: T008; requirements: FR-014, FR-027–028, SC-001.
   - Acceptance: reproducible instructions, actual decisions/AI use, remaining issues/impact/recommendation, new files/entities/tables/endpoints and risks.
   - Verification: reread requirements against final diff, check cited file lines and commands.
   - Evidence: corrected AGENT.md drafted; README delegated in isolated agent/aloia-documentation worktree. Root owns handoff/inventory.
   - Evidence: README reviewed and integrated; AGENT and 28-row handoff matrix written with all 62 new files, tables/entities/endpoint inventory; local links and shell syntax pass.
-  - Blocker: none; next: record verified publication.
-- [ ] T010 Commit and push complete verified feature branch and leave local API/UI available for testing.
-  - Status: in_progress; agent: root; dependencies: T009; requirements: SC-005.
-  - Acceptance: clean in-scope commits, remote HEAD matches, local URLs verified, no merge/deploy/worktree cleanup.
+  - Evidence: publication verified at 0f34a6300a8196552064a60eef8f9a7ba53f73ce and recorded in the handoff; reviewer access limitation is explicit.
+  - Blocker: none; next: none within documentation scope.
+- [x] T010 Commit and push complete verified feature branch and leave local API/UI available for testing.
+  - Status: done; agent: root; dependencies: T009; requirements: SC-005.
+  - Acceptance: clean in-scope commits, remote HEAD matches, local URLs verified, no remote merge/deploy/worktree cleanup.
   - Verification: git status/log/ls-remote and fresh local readiness/browser checks.
-  - Blocker: delivery; next: final verification and push.
+  - Evidence: clean local tree and origin feature branch both at 0f34a6300a8196552064a60eef8f9a7ba53f73ce; original commit remains an ancestor; all 62 new files included. Authenticated API and UI respond 200; RFQ-DEMO-022 READY/not_sent is available for user testing.
+  - Blocker: none for branch publication; next: reviewer read-only access requires a separate destination/permission decision documented in the handoff.
 
 ## Dependencies and parallel execution
 T002 (RFQ), T003 (ERP) and T005 (domain) use disjoint files and separate writer worktrees from
