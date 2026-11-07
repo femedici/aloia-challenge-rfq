@@ -14,13 +14,14 @@ const secret = 'test-webhook-secret';
 
 describe('API authentication', () => {
   let app: INestApplication;
+  const processEvent = jest.fn(async () => undefined);
   beforeAll(async () => {
     process.env.INTERNAL_API_KEY = key;
     process.env.WEBHOOK_SECRET = secret;
     const module = await Test.createTestingModule({
       controllers: [HealthController, ItemsController, RfqController, WebhookController],
       providers: [{ provide: RfqService, useValue: {
-        processEvent: async () => undefined, list: async () => [], getRfq: async () => ({}),
+        processEvent, list: async () => [], getRfq: async () => ({}),
         quoteItem: async () => ({}), noQuote: async () => ({}),
       } }],
     }).compile();
@@ -35,7 +36,7 @@ describe('API authentication', () => {
     ['put', '/rfqs/TEST/items/1/quote'], ['post', '/rfqs/TEST/items/1/no-quote'],
     ['post', '/webhooks/rfq'],
   ])('%s %s rejects absent and wrong keys', async (method, path) => {
-    for (const candidate of [undefined, 'wrong-key']) {
+    for (const candidate of [undefined, 'wrong-key', 'x'.repeat(key.length)]) {
       const call = request(app.getHttpServer())[method](path);
       if (candidate) call.set('x-api-key', candidate);
       const body = JSON.stringify({ eventId: 'security', type: 'rfq.created', occurredAt: '2026-11-02T00:00:00Z', data: {
@@ -45,6 +46,17 @@ describe('API authentication', () => {
       call.set('content-type', 'application/json');
       await call.send(body).expect(401);
     }
+  });
+
+  it('rejects well-formed forged signatures and bodies modified after signing', async () => {
+    const body = JSON.stringify({ type: 'rfq.created' });
+    for (const [signed, signingSecret] of [[body, 'wrong-secret'], [body + ' ', secret]]) {
+      await request(app.getHttpServer()).post('/webhooks/rfq').set('x-api-key', key)
+        .set('content-type', 'application/json')
+        .set('x-signature', `sha256=${createHmac('sha256', signingSecret).update(signed).digest('hex')}`)
+        .send(body).expect(401);
+    }
+    expect(processEvent).not.toHaveBeenCalled();
   });
 
   it('accepts a configured key and still requires a valid webhook signature', async () => {
