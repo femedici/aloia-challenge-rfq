@@ -15,6 +15,11 @@ function text(value: unknown, field: string, allowEmpty = false): asserts value 
   }
 }
 
+function identifier(value: unknown, field: string): asserts value is string {
+  text(value, field);
+  if (value.length > 200) throw new BadRequestException(`${field} deve ter até 200 caracteres`);
+}
+
 function integer(value: unknown, field: string, minimum = 1): asserts value is number {
   if (!Number.isInteger(value) || (value as number) < minimum || (value as number) > 2147483647) {
     throw new BadRequestException(`${field} deve ser inteiro entre ${minimum} e 2147483647`);
@@ -29,7 +34,7 @@ function decimal(value: unknown, field: string): asserts value is string {
 
 export function validateWebhookEvent(value: unknown): asserts value is RfqEvent {
   object(value, 'event');
-  text(value.eventId, 'eventId');
+  identifier(value.eventId, 'eventId');
   if (value.type !== 'rfq.created' && value.type !== 'rfq.item_canceled') {
     throw new BadRequestException('type deve ser rfq.created ou rfq.item_canceled');
   }
@@ -40,7 +45,7 @@ export function validateWebhookEvent(value: unknown): asserts value is RfqEvent 
   }
   object(value.data, 'data');
   const data = value.data;
-  text(data.rfqId, 'data.rfqId');
+  identifier(data.rfqId, 'data.rfqId');
   if (value.type === 'rfq.item_canceled') {
     integer(data.lineNumber, 'data.lineNumber');
     text(data.reason, 'data.reason');

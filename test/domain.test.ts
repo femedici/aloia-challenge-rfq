@@ -124,6 +124,29 @@ describe('validateWebhookEvent', () => {
     expect(value).toEqual(original);
   });
 
+  it.each([created, canceled])('preserva identificadores com 200 caracteres em $type', (event) => {
+    const value = structuredClone(event);
+    value.eventId = ' ' + 'é'.repeat(198) + ' ';
+    value.data.rfqId = ' ' + '漢'.repeat(198) + ' ';
+    const original = structuredClone(value);
+    expect(() => validateWebhookEvent(value)).not.toThrow();
+    expect(value).toEqual(original);
+  });
+
+  it.each([created, canceled])('recusa identificadores eventId com mais de 200 caracteres em $type', (event) => {
+    expectBadRequest(() => validateWebhookEvent({ ...event, eventId: 'e'.repeat(201) }), 'eventId');
+  });
+
+  it.each([created, canceled])('recusa identificadores rfqId com mais de 200 caracteres em $type', (event) => {
+    expectBadRequest(() => validateWebhookEvent({ ...event, data: { ...event.data, rfqId: 'r'.repeat(201) } }), 'data.rfqId');
+  });
+
+  it.each([created, canceled])('recusa identificadores longos com NUL em $type', (event) => {
+    const invalidId = 'e'.repeat(4000) + '\0';
+    expectBadRequest(() => validateWebhookEvent({ ...event, eventId: invalidId }), 'eventId');
+    expectBadRequest(() => validateWebhookEvent({ ...event, data: { ...event.data, rfqId: invalidId } }), 'data.rfqId');
+  });
+
   it('preserva valores de domínio inválidos e datas que gerarão warnings', () => {
     const value = structuredClone(created);
     value.data.items = [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1].map((quantity, index) => ({
