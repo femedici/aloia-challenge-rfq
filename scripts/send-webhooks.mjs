@@ -38,8 +38,9 @@ const urlIdx = args.indexOf('--url');
 const URL_ = urlIdx >= 0 ? args[urlIdx + 1] : 'http://localhost:3000/webhooks/rfq';
 const scenario = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--url') ?? 'basico';
 const SECRET = process.env.WEBHOOK_SECRET;
-if (!SECRET) {
-  console.error('WEBHOOK_SECRET não definido (ambiente ou .env).');
+const API_KEY = process.env.INTERNAL_API_KEY;
+if (!SECRET || !API_KEY) {
+  console.error('WEBHOOK_SECRET e INTERNAL_API_KEY são obrigatórios (ambiente ou .env).');
   process.exit(1);
 }
 
@@ -64,6 +65,7 @@ async function post({ name, body }, { badSignature = false } = {}) {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'x-api-key': API_KEY,
         'x-signature': sign(body, badSignature ? 'segredo-errado' : SECRET),
       },
       body,

@@ -1,9 +1,10 @@
-import { Body, Controller, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { ApiKeyGuard } from '../common/api-key.guard';
 import { RfqService } from './rfq.service';
 import type { QuoteInput } from './rfq.service';
 
 @Controller('rfqs/:rfqId/items')
-// @UseGuards(ApiKeyGuard)
+@UseGuards(ApiKeyGuard)
 export class ItemsController {
   constructor(private readonly rfqService: RfqService) {}
 

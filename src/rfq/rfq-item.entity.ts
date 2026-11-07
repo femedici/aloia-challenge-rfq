@@ -1,9 +1,10 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { Rfq } from './rfq.entity';
 
 export type ItemStatus = 'pending' | 'quoted' | 'no_quote' | 'canceled' | 'invalid';
 
 @Entity('rfq_item')
+@Unique(['rfq', 'lineNumber'])
 export class RfqItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -23,7 +24,7 @@ export class RfqItem {
   @Column({ nullable: true })
   description: string;
 
-  @Column()
+  @Column({ type: 'double precision' })
   quantity: number;
 
   @Column()
@@ -40,6 +41,9 @@ export class RfqItem {
 
   @Column({ default: 'pending' })
   status: ItemStatus;
+
+  @Column({ nullable: true })
+  cancellationReason: string;
 
   @Column({ nullable: true })
   invalidReason: string;

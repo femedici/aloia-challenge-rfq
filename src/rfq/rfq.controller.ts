@@ -14,18 +14,11 @@ export class RfqController {
   ) {
     const rfqs = await this.rfqService.list(page, pageSize);
     return rfqs.map((rfq) => {
-      const pending = rfq.items.filter((i) => i.status === 'pending').length;
-      const quoted = rfq.items.filter((i) => i.status === 'quoted').length;
-      let status = 'CLOSED';
-      if (rfq.items.length === 0) status = 'INVALID';
-      else if (pending === rfq.items.length) status = 'OPEN';
-      else if (pending > 0) status = 'IN_PROGRESS';
-      else if (quoted > 0) status = 'READY';
       return {
         rfqId: rfq.rfqId,
         customerName: rfq.customerName,
         itemCount: rfq.items.length,
-        status,
+        status: this.rfqService.deriveStatus(rfq.items),
         createdAt: rfq.createdAt,
       };
     });
