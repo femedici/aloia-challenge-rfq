@@ -149,3 +149,10 @@ As a reviewer I can reproduce the result and trace each requested requirement to
 - Spec Kit convergence checked 28 functional requirements, 25 acceptance scenarios, 5 success criteria, 8 architecture decisions and 5 constitution principles; no gaps or new corrective tasks.
 - Complete delivery commit `0f34a6300a8196552064a60eef8f9a7ba53f73ce` was pushed and verified against the remote feature branch; subsequent documentation closure records this evidence.
 - Reviewer read-only access remains an external delivery decision: personal private GitHub repositories do not support that role.
+
+## Documentation revision — 2026-11-08
+
+- FR-027–028: README rewritten in concise Portuguese around the original challenge, with setup, testing, API, decisions, issues/impact/recommendations and actual AI use.
+- The introduction links the supplied, unchanged `docs/passos_desafio.pdf` and `docs/arquitetura_aloia.png`, the original SPEC, this live spec and AGENT.md. Attachments are development references; application requirements and behavior are unchanged.
+- Fresh verification: 290 tests in 9 suites and API/web builds pass; attachment SHA-256 matches and README local links pass. Local PostgreSQL and ERP lookup are available; API, UI and Vite proxy respond 200.
+- README and attachments published on `agent/aloia-rfq-reliability` at `950d415955fac9ee5f8a4cb7b4474b0032a487c5`, verified against origin. Revision handoff: `outputs/aloia-readme-handoff.md`.

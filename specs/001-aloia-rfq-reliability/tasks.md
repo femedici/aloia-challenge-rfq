@@ -81,6 +81,15 @@ Each implementation task uses RED -> GREEN -> review; task status remains in_pro
   - Evidence: clean local tree and origin feature branch both at 0f34a6300a8196552064a60eef8f9a7ba53f73ce; original commit remains an ancestor; all 62 new files included. Authenticated API and UI respond 200; RFQ-DEMO-022 READY/not_sent is available for user testing.
   - Blocker: none for branch publication; next: reviewer read-only access requires a separate destination/permission decision documented in the handoff.
 
+## Documentation revision — 2026-11-08
+- [x] T011 Simplify `README.md` and add the supplied development steps and architecture to `docs/`.
+  - Status: done; agent: root; dependencies: T009,T010; requirements: FR-027–028.
+  - Files: `README.md`, `docs/passos_desafio.pdf`, `docs/arquitetura_aloia.png`, living spec, this tracker and `outputs/aloia-readme-handoff.md`.
+  - Acceptance: concise Portuguese README follows the requested opening, links both unchanged attachments and retains the original challenge requirements, setup, decisions and issue recommendations.
+  - Verification: compare attachment hashes, check local Markdown links, review against `SPEC.md`, execute documented tests/builds and check local API/UI.
+  - Evidence: coordinator reviewed the diff against the original SPEC; both attachments match their source SHA-256; all local README links exist. 290 tests in 9 suites and both builds pass. Authenticated API, UI and Vite proxy return 200; PostgreSQL and ERP lookup are available. README and attachments published at `950d415955fac9ee5f8a4cb7b4474b0032a487c5`, verified against origin.
+  - Blocker: none; next: none within this documentation revision. See `outputs/aloia-readme-handoff.md`.
+
 ## Dependencies and parallel execution
 T002 (RFQ), T003 (ERP) and T005 (domain) use disjoint files and separate writer worktrees from
 one common baseline. Root alone integrates each branch and updates status. T004/T006 converge
