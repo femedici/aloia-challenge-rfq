@@ -11,6 +11,7 @@ A [SPEC.md](SPEC.md) original permanece como referência do desafio proposto pel
 - Envio ao ERP apenas de RFQs `READY`, com os itens `quoted` e uma única submissão por RFQ.
 - Tratamento de falhas do ERP, novas tentativas seguras e consulta de pedidos com resultado incerto.
 - Situação do envio no detalhe, botão **Enviar ao ERP**, carregamento, erros e atualização automática da tela.
+- Filtros por cliente, RFQ e situação, ordenação e consulta manual com confirmação de atualização.
 - Testes de idempotência, concorrência, regras de negócio e falhas de integração.
 
 A aplicação mantém NestJS, TypeORM/PostgreSQL, React, Vite e TanStack Query.
@@ -44,6 +45,21 @@ Abra [http://127.0.0.1:5173](http://127.0.0.1:5173). Por padrão, a API usa a po
 O ambiente é local: o proxy do Vite injeta a chave da API sem expô-la no navegador, mas não substitui autenticação de usuários. O ERP simulado guarda pedidos em memória; reiniciá-lo perde esse histórico.
 
 ## Como testar
+
+Com `DEMO_MODE=true` (padrão do `.env.example`), a API prepara seis exemplos locais ao iniciar, sem enviar pedidos ao ERP:
+
+| RFQ | Situação inicial | Envio permitido |
+| --- | --- | --- |
+| `RFQ-DEMO-OPEN` | Dois itens pendentes. | Não |
+| `RFQ-DEMO-PARTIAL` | Um cotado e três pendentes. | Não |
+| `RFQ-DEMO-READY` | Dois cotados. | Sim, dois itens |
+| `RFQ-DEMO-MIXED` | Um cotado, um cancelado e um não cotar. | Sim, só o cotado |
+| `RFQ-DEMO-CLOSED` | Nenhum item cotável. | Não |
+| `RFQ-DEMO-INVALID` | Dois itens inválidos. | Não |
+
+Filtre por `RFQ-DEMO` e abra READY ou MIXED pela ação de visualizar. Clique em **Enviar ao ERP** e acompanhe o resultado; **Consultar situação** atualiza o detalhe manualmente. “Cotação enviada ao ERP” aparece somente após confirmação. Em modo `chaos`, podem ocorrer esperas e falhas.
+
+Reiniciar preserva os exemplos e seus envios. Para outra rodada, use `DEMO_MODE=true DEMO_ROUND=2 npm run start:dev`; os IDs recebem o sufixo `-2`. A preparação fica desativada sem `DEMO_MODE=true` e é recusada em produção.
 
 Com a API em execução, carregue os eventos de exemplo:
 
@@ -85,6 +101,8 @@ Todos os endpoints exigem `X-Api-Key`. O webhook também exige `X-Signature: sha
 | `POST /rfqs/:rfqId/submit` | Iniciar ou consultar a submissão existente. |
 | `GET /health` | Verificar se a API responde; não verifica banco ou ERP. |
 
+A listagem também aceita `rfq`, `customer`, `status`, `sortBy` e `sortDirection`; os filtros e a ordenação são aplicados antes da paginação.
+
 O primeiro submit exige `READY`; fora disso, retorna `409`. Submissões em andamento retornam `202` e as concluídas, `200`. Campos e respostas estão nos [contratos da API](specs/001-aloia-rfq-reliability/contracts/api.md).
 
 ## Decisões e limites
@@ -125,4 +143,4 @@ Com mais tempo, priorizaria essas pendências, observabilidade do worker e CI co
 
 ## Como usei IA
 
-Usei Codex para analisar o repositório, discutir a solução e implementar com agentes separados por domínio, ERP, interface e revisão. Organizei regras e critérios no [AGENT.md](AGENT.md) e usei o Spec Kit para manter especificação, decisões e tarefas. Acompanhei a implementação com revisão e testes de sucesso, erro e concorrência. Os [passos do desenvolvimento](docs/passos_desafio.pdf) descrevem esse processo; o [registro técnico da entrega](outputs/aloia-rfq-handoff.md) reúne as evidências e os limites verificados.
+Usei Codex para analisar o repositório, discutir a solução e implementar com agentes separados por domínio, ERP, interface e revisão. Organizei regras e critérios no [AGENT.md](AGENT.md) e usei o Spec Kit para manter especificação, decisões e tarefas. Acompanhei a implementação com revisão e testes de sucesso, erro e concorrência. Os [passos do desenvolvimento](docs/passos_desafio.pdf) descrevem esse processo; o [registro da integração](outputs/aloia-main-handoff.md) reúne as verificações da versão final.

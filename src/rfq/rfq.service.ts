@@ -1,9 +1,9 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { calculateQuote } from '../common/price';
-import { validatePagination } from '../common/validation';
-import { RfqSubmission } from '../erp/rfq-submission.entity';
+import { parseRfqListOptions, validatePagination } from '../common/validation';
+import { RfqSubmission, SubmissionStatus } from '../erp/rfq-submission.entity';
 import type { QuoteInput, RfqCanceledEvent, RfqCreatedEvent } from './rfq.types';
 export type { QuoteInput } from './rfq.types';
 import {
@@ -151,13 +151,45 @@ export class RfqService {
     return { ...rfq, status: this.deriveStatus(rfq.items), submission: this.submissionView(submission) };
   }
 
-  async list(page: number, pageSize: number) {
+  async list(page: number, pageSize: number, queryOptions: unknown = {}) {
     validatePagination(page, pageSize);
-    return this.rfqs.find({
-      relations: { items: true },
-      order: { createdAt: 'DESC', rfqId: 'ASC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+    const options = parseRfqListOptions(queryOptions);
+    const valid = "COUNT(item.id) FILTER (WHERE item.status <> 'invalid')";
+    const pending = "COUNT(item.id) FILTER (WHERE item.status = 'pending')";
+    const quoted = "COUNT(item.id) FILTER (WHERE item.status = 'quoted')";
+    // Query-only projection for global filtering/order; deriveStatus still owns returned domain status.
+    // The PostgreSQL parity test covers every combination of item states and repeated counts.
+    const status = `CASE WHEN ${valid} = 0 THEN 'INVALID' WHEN ${pending} = ${valid} THEN 'OPEN'
+      WHEN ${pending} > 0 THEN 'IN_PROGRESS' WHEN ${quoted} > 0 THEN 'READY' ELSE 'CLOSED' END`;
+    const sortColumns = {
+      rfqId: 'LOWER(rfq.rfqId)', customerName: 'LOWER(rfq.customerName)',
+      itemCount: '"itemCount"', status: '"quoteStatus"', submissionStatus: '"submissionStatus"', createdAt: 'rfq.createdAt',
+    };
+    const contains = (value: string) => `%${value.replace(/[\\%_]/g, '\\$&')}%`;
+
+    // The selected page and its hydrated items must see the same snapshot during concurrent edits.
+    return this.rfqs.manager.transaction('REPEATABLE READ', async (manager) => {
+      const repository = manager.getRepository(Rfq);
+      const selection = repository.createQueryBuilder('rfq')
+        .leftJoin('rfq.items', 'item')
+        .leftJoin(RfqSubmission, 'submission', 'submission.rfqId = rfq.rfqId')
+        .select('rfq.id', 'id')
+        .addSelect('COUNT(item.id)', 'itemCount')
+        .addSelect(status, 'quoteStatus')
+        .addSelect("COALESCE(submission.status, 'not_sent')", 'submissionStatus')
+        .groupBy('rfq.id').addGroupBy('submission.status');
+      if (options.rfq) selection.andWhere('rfq.rfqId ILIKE :rfq', { rfq: contains(options.rfq) });
+      if (options.customer) {
+        selection.andWhere('(rfq.customerName ILIKE :customer OR rfq.customerCode ILIKE :customer)', { customer: contains(options.customer) });
+      }
+      if (options.status) selection.having(`${status} = :status`, { status: options.status });
+      const selected = await selection.orderBy(sortColumns[options.sortBy], options.sortDirection === 'asc' ? 'ASC' : 'DESC')
+        .addOrderBy('rfq.rfqId', 'ASC').offset((page - 1) * pageSize).limit(pageSize)
+        .getRawMany<{ id: string; submissionStatus: SubmissionStatus | 'not_sent' }>();
+      if (!selected.length) return [];
+      const rfqs = await repository.find({ where: { id: In(selected.map(row => row.id)) }, relations: { items: true } });
+      const byId = new Map(rfqs.map(rfq => [rfq.id, rfq]));
+      return selected.map(row => ({ ...byId.get(row.id)!, submissionStatus: row.submissionStatus }));
     });
   }
 

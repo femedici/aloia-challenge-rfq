@@ -81,16 +81,78 @@ Each implementation task uses RED -> GREEN -> review; task status remains in_pro
   - Evidence: clean local tree and origin feature branch both at 0f34a6300a8196552064a60eef8f9a7ba53f73ce; original commit remains an ancestor; all 62 new files included. Authenticated API and UI respond 200; RFQ-DEMO-022 READY/not_sent is available for user testing.
   - Blocker: none for branch publication; next: reviewer read-only access requires a separate destination/permission decision documented in the handoff.
 
-## Documentation revision — 2026-11-08
-- [x] T011 Simplify `README.md` and add the supplied development steps and architecture to `docs/`.
-  - Status: done; agent: root; dependencies: T009,T010; requirements: FR-027–028.
-  - Files: `README.md`, `docs/passos_desafio.pdf`, `docs/arquitetura_aloia.png`, living spec, this tracker and `outputs/aloia-readme-handoff.md`.
-  - Acceptance: concise Portuguese README follows the requested opening, links both unchanged attachments and retains the original challenge requirements, setup, decisions and issue recommendations.
-  - Verification: compare attachment hashes, check local Markdown links, review against `SPEC.md`, execute documented tests/builds and check local API/UI.
-  - Evidence: coordinator reviewed the diff against the original SPEC; both attachments match their source SHA-256; all local README links exist. 290 tests in 9 suites and both builds pass. Authenticated API, UI and Vite proxy return 200; PostgreSQL and ERP lookup are available. README and attachments published at `950d415955fac9ee5f8a4cb7b4474b0032a487c5`, verified against origin.
-  - Blocker: none; next: none within this documentation revision. See `outputs/aloia-readme-handoff.md`.
-
 ## Dependencies and parallel execution
 T002 (RFQ), T003 (ERP) and T005 (domain) use disjoint files and separate writer worktrees from
 one common baseline. Root alone integrates each branch and updates status. T004/T006 converge
 these components. UI waits for core verification; documentation and final publish follow validation.
+
+## Phase 7: Approved list refinement and original comparison
+- [x] T011 Inspect actual architecture, approve design and prepare uncommitted VS Code review.
+  - Status: done; agent: root; dependencies: T010; files: feature spec/plan/tasks and review worktree.
+  - Acceptance: design approved, original and previous delivery preserved, all prior changes visible.
+  - Verification: review HEAD 2e810cf; previous delivery efe2cd1 unchanged; git diff --cached empty; code CLI opened review.
+  - Blocker: none; next: implement approved disjoint tasks. No new commits/push per latest user request.
+- [x] T012 [P] Add global list filtering, ordering and ERP summary state.
+  - Status: done; agent: erp_delivery; dependencies: T011; files: src/rfq/rfq.service.ts, rfq.controller.ts, src/common/validation.ts, test/rfq-list.test.ts (and test/rfq-api.test.ts only if needed).
+  - Acceptance: filters combine across pages, every data-column sort supports both directions, stable ties,
+    quote status matches detail, query values validated, summary response stays an array with submissionStatus.
+  - Verification: targeted PostgreSQL HTTP RED/GREEN tests and API build.
+  - Evidence: root reviewed/applied the isolated diff; 24 PostgreSQL list tests plus 32 API tests pass. All state combinations and concurrent page hydration covered; full suite 322 tests and API build pass.
+  - Blocker: none; next: final closure in T015.
+- [x] T013 [P] Implement logo, viewport table, controls, status clarity and manual refresh feedback.
+  - Status: done; agent: domain_rules; dependencies: T011; files: web/src/**, web/public/aloia-logo.png, targeted UI tests.
+  - Acceptance: FR-029–034; all requested visible controls accessible; no general RFQ edit action invented.
+  - Verification: meaningful behavior regressions, web build; root browser verifies desktop/mobile and real API.
+  - Evidence: root reviewed/applied diff; 8 frontend boundary/state tests and web build pass. Edge verified combined filters, ordering, back navigation, keyboard eye, internal scrolling, desktop/390px mobile, real refresh success and isolated loading/error/retry/polling. Manual query/mutation race reproduced before correction and prevented after correction; independent reviewer confirms.
+  - Blocker: none; next: final closure in T015.
+- [x] T014 [P] Explain architecture and quotation lifecycle in TXT.
+  - Status: done; agent: root; dependencies: T011; files: outputs/aloia-rfq-arquitetura.txt, relevant handoff sections.
+  - Acceptance: FR-035 with all entities, keys/relations, event visibility, quote/ERP states and actual API-only quotation.
+  - Verification: check against current entities/controllers/services and independent architecture review.
+  - Evidence: coordinator inspected current entities/services/controllers/formula; independent reviewer checked all fields and lifecycle, and attempt-counter precision was corrected.
+  - Blocker: none; next: include in final handoff.
+- [x] T015 Integrate, validate, converge and leave complete review open without commits.
+  - Status: done; agent: root + audit_rfq_architecture; dependencies: T012,T013,T014; files: integration review tree, spec/tasks/handoff/evidence.
+  - Acceptance: FR-036; tests/builds/browser pass, all changes visible versus original, published branch intact, local review available.
+  - Verification: full tests/builds, browser table/filters/order/refresh/keyboard, git HEAD/status/staged diff, VS Code SCM.
+  - Evidence: root verified 322 tests/12 suites, 96.70% backend line coverage, both builds, live UI/API/database 200, desktop/mobile interactions and controlled refresh failures. VS Code Working Tree diff is open; review HEAD 2e810cf, staged empty, published root clean at efe2cd1.
+  - Evidence: final convergence found zero gaps across 36 FR, 31 acceptance scenarios, 5 SC, original/refinement plan decisions and 5 constitution principles. No convergence tasks appended. TXT/handoff and three current screenshots delivered.
+  - Blocker: none in this approved refinement; next: user review of uncommitted changes. Commit/push intentionally excluded by explicit request.
+
+## Phase 8: Excalidraw architecture documentation
+- [x] T016 Draw the implemented architecture as an editable Excalidraw board.
+  - Status: done; agent: root; dependencies: T014; files: outputs/aloia-rfq-arquitetura.excalidraw, outputs/aloia-rfq-arquitetura-excalidraw.png, current handoff.
+  - Acceptance: application components, all entities/keys/relationships and distinct event/quotation/ERP lifecycles match the approved TXT.
+  - Verification: JSON schema/version and element-reference checks; 107 elements imported in Excalidraw; selected drawing exported by Excalidraw as PNG and visually reviewed.
+  - Evidence: editable file and PNG saved; existing unrelated canvas content preserved; browser left open with the new drawing. No source-code changes or commits.
+  - Blocker: none; next: user can edit the native file in Excalidraw.
+
+## Phase 9: One quotation column
+- [x] T017 Consolidate list quotation/delivery presentation in the Cotação column.
+  - Status: done; agent: root; dependencies: T013; files: web/src/RfqList.tsx, RfqDetail.tsx, status-labels.ts, test/rfq-list-ui.test.ts, live spec/plan/handoff/architecture TXT.
+  - Acceptance: no ERP column; sent displays “Cotação enviada ao ERP”; READY without a submission stays “Pronta para envio”; pending/error states never claim delivery; existing filters and scrolling remain usable.
+  - Verification: focused status-label RED/GREEN tests, web build, real browser list/detail check and screenshot.
+  - Evidence: 7 new label cases failed before the correction and passed afterward; 15 focused tests pass, web TypeScript/Vite build passes, diff check clean. Browser confirms 5 columns, sent label in list/detail with SO-1005, READY filter, and 390×844 layout with no page overflow.
+  - Blocker: none; next: user review at port 5174; changes remain uncommitted.
+
+## Phase 10: Reviewer demo startup
+- [x] T018 Prepare reproducible reviewer scenarios on local startup and document validation.
+  - Status: done; agent: root; dependencies: T017; files: src/rfq/rfq-demo.service.ts, rfq.module.ts, test/rfq-demo.test.ts, .env.example, README.md, spec/plan/tasks, handoff.
+  - Acceptance: six approved RFQs, READY/MIXED manually submittable, repeat/concurrent startup preserves data, fresh rounds, no automatic ERP send, production guard.
+  - Verification: RED/GREEN PostgreSQL tests, full suite, builds, live local API/UI.
+  - Evidence: 13 initial tests failed on missing demos; 18 demo tests now pass. Full suite: 347 tests/13 suites; API and web builds pass. Live startup created six examples; browser verified READY enabled and PARTIAL disabled. No automatic ERP submission.
+  - Blocker: none; next: manual reviewer test, changes uncommitted per review instruction.
+
+## Phase 11: Documentation and approved main integration — 2026-11-08
+- [x] T019 Rewrite the README and include the supplied development references (documentation task previously named T011 on the reliability branch).
+  - Status: done; agent: root; dependencies: T009,T010; files: README.md, docs/passos_desafio.pdf, docs/arquitetura_aloia.png.
+  - Acceptance: concise Portuguese opening links both unchanged attachments, original SPEC, live spec and AGENT.md.
+  - Verification: source hashes and local links; 290 tests and both builds passed before publication.
+  - Evidence: documentation published at 950d415, closure at 5f19c24; remapped here to preserve the review branch's existing T011–T018 identities.
+  - Blocker: none; next: retain in the integrated version.
+- [ ] T020 Integrate the reviewed tree with the new README/attachments and publish the validated result on origin/main.
+  - Status: in_progress; agent: root; dependencies: T018,T019; files: reviewed application/tests, README.md, docs/, live spec/tracker and outputs/aloia-main-handoff.md.
+  - Acceptance: preserve the review's code and intentional artifact removals, combine concise documentation with current demo instructions, resolve conflicts, pass tests/builds and verify main's remote commit.
+  - Verification: compare integrated source bytes against the review snapshot; full Jest/API/web builds; Markdown links, attachment hashes, local API/UI, Git ancestry and remote refs.
+  - Evidence: review snapshot committed as 4c98836 after 347 tests/13 suites and both builds passed; merge conflicts resolved using reviewed source and the concise README. No changes to the original upstream repository.
+  - Blocker: none; next: validate the integrated tree, commit the merge, publish main and verify the repository default branch.

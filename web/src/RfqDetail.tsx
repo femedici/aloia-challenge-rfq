@@ -2,15 +2,11 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './api';
 import type { Rfq, Submission } from './api';
+import { quotationDescriptions, rfqStatusLabel, submissionLabels } from './status-labels';
 
 const activeStatuses: Submission['status'][] = ['pending', 'sending', 'retry_wait', 'reconciling'];
-const submissionLabels: Record<Submission['status'], string> = {
-  not_sent: 'Não enviado', pending: 'Aguardando envio', sending: 'Enviando ao ERP',
-  retry_wait: 'Nova tentativa agendada', reconciling: 'Confirmando recebimento',
-  sent: 'Enviado com sucesso', failed: 'Falha definitiva',
-};
 const submissionDescriptions: Record<Submission['status'], string> = {
-  not_sent: 'Somente os itens cotados serão enviados. O RFQ precisa estar READY.',
+  not_sent: 'Somente os itens cotados serão enviados. A cotação precisa estar pronta para envio.',
   pending: 'A cotação foi registrada e está aguardando processamento.',
   sending: 'A cotação está sendo transmitida. A situação será atualizada automaticamente.',
   retry_wait: 'O ERP está temporariamente indisponível. Uma nova tentativa será feita automaticamente.',
@@ -30,11 +26,25 @@ const formatTimestamp = (value: string) => new Date(value).toLocaleString('pt-BR
 export function RfqDetail({ rfqId }: { rfqId: string }) {
   const queryClient = useQueryClient();
   const [checkingSubmission, setCheckingSubmission] = useState(false);
+  const [manualCheck, setManualCheck] = useState<{ status: 'idle' | 'pending' | 'success' | 'error'; at?: string; message?: string }>({ status: 'idle' });
   const { data: rfq, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['rfq', rfqId],
     queryFn: () => api.getRfq(rfqId),
     refetchInterval: (query) => checkingSubmission || activeStatuses.includes(query.state.data?.submission.status ?? 'not_sent') ? 2000 : false,
   });
+
+  async function consultSubmission() {
+    // Canceling a shared query can return cached success, so mutations and manual refresh cannot overlap.
+    if (manualCheck.status === 'pending' || noQuote.isPending || submit.isPending) return;
+    setManualCheck({ status: 'pending' });
+    try {
+      const result = await refetch();
+      if (result.isError) throw result.error;
+      setManualCheck({ status: 'success', at: new Date().toISOString() });
+    } catch (failure) {
+      setManualCheck({ status: 'error', message: failure instanceof Error ? failure.message : 'Tente novamente.' });
+    }
+  }
 
   useEffect(() => {
     if (rfq && rfq.submission.status !== 'not_sent') setCheckingSubmission(false);
@@ -73,8 +83,9 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
   if (!rfq) return null;
   const submission = rfq.submission;
   const hasSubmission = submission.status !== 'not_sent';
-  const itemsLocked = hasSubmission || submit.isPending || checkingSubmission;
-  const canSubmit = rfq.status === 'READY' && !hasSubmission && !submit.isPending && !noQuote.isPending;
+  const manualPending = manualCheck.status === 'pending';
+  const itemsLocked = hasSubmission || submit.isPending || checkingSubmission || manualPending;
+  const canSubmit = rfq.status === 'READY' && !hasSubmission && !submit.isPending && !noQuote.isPending && !manualPending;
   const active = activeStatuses.includes(submission.status);
 
   return (
@@ -85,10 +96,10 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
           <h1 id="rfq-title">{rfq.rfqId}</h1>
           <p className="section-description">{rfq.customerName} <span className="customer-code">{rfq.customerCode}</span></p>
         </div>
-        <span className={`badge ${rfq.status}`}>{rfq.status}</span>
+        <span className={`badge ${submission.status === 'not_sent' ? rfq.status : submission.status}`} title={quotationDescriptions[rfq.status]}>{rfqStatusLabel(rfq.status, submission.status)}</span>
       </header>
 
-      {error && <p className="error" role="alert">Não foi possível atualizar o RFQ. {error.message}</p>}
+      {error && manualCheck.status !== 'error' && <p className="error" role="alert">Não foi possível atualizar o RFQ. {error.message}</p>}
       <section className={`submission-panel submission-${submission.status}`} aria-labelledby="submission-title">
         <div className="submission-heading">
           <div>
@@ -96,12 +107,19 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
             <h2 id="submission-title">Envio ao ERP</h2>
           </div>
           <div className="submission-actions">
-            <button className="secondary" disabled={isFetching} onClick={() => void refetch()}>Consultar situação</button>
+            <button className="secondary" disabled={isFetching || manualPending || noQuote.isPending || submit.isPending} onClick={() => void consultSubmission()}>
+              {manualCheck.status === 'pending' ? 'Consultando…' : 'Consultar situação'}
+            </button>
             {!hasSubmission && <button disabled={!canSubmit} onClick={() => submit.mutate()} aria-describedby="submission-description">
               {submit.isPending ? 'Solicitando envio…' : checkingSubmission ? 'Tentar envio novamente' : 'Enviar ao ERP'}
             </button>}
           </div>
         </div>
+        {manualCheck.status === 'pending' && <p className="manual-feedback" role="status">Consultando a situação atual no servidor…</p>}
+        {manualCheck.status === 'success' && manualCheck.at && <p className="manual-feedback success" role="status">
+          Consulta concluída às <time dateTime={manualCheck.at}>{new Date(manualCheck.at).toLocaleTimeString('pt-BR')}</time>.
+        </p>}
+        {manualCheck.status === 'error' && <p className="error" role="alert">A consulta falhou. {manualCheck.message}</p>}
         <div role="status" aria-live="polite" aria-atomic="true">
           <span className={`badge delivery ${submission.status}`}>{submissionLabels[submission.status]}</span>
           <p id="submission-description" className="submission-description">{submissionDescriptions[submission.status]}</p>
@@ -119,7 +137,7 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
             {submission.erpOrderId && <div><dt>Pedido no ERP</dt><dd className="order-id">{submission.erpOrderId}</dd></div>}
           </dl>
           {submission.lastError && <p className={submission.status === 'failed' ? 'error' : 'notice'} role={submission.status === 'failed' ? 'alert' : undefined}><strong>{submission.status === 'failed' ? 'Motivo: ' : 'Última ocorrência: '}</strong>{submission.lastError}</p>}
-          <p className="muted">Os itens enviados foram preservados. A cotação está bloqueada para alterações.</p>
+          <p className="muted">Os itens da cotação foram preservados. A cotação está bloqueada para alterações.</p>
         </>}
         {active && <p className="auto-refresh">Atualização automática a cada 2 segundos.</p>}
       </section>

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `agent/aloia-rfq-reliability`
 **Created**: 2026-11-07
-**Status**: Implemented, validated locally and published on the feature branch
+**Status**: Initial delivery published; approved UI/list refinement implemented and locally verified, uncommitted on agent/aloia-rfq-review
 **Input**: Attached “spec - aloia test”, all primary and secondary requirements,
 plus the repository SPEC.md and README.md. Preserve existing architecture and scope.
 
@@ -150,9 +150,68 @@ As a reviewer I can reproduce the result and trace each requested requirement to
 - Complete delivery commit `0f34a6300a8196552064a60eef8f9a7ba53f73ce` was pushed and verified against the remote feature branch; subsequent documentation closure records this evidence.
 - Reviewer read-only access remains an external delivery decision: personal private GitHub repositories do not support that role.
 
-## Documentation revision — 2026-11-08
+## Approved refinement — 2026-11-07
 
-- FR-027–028: README rewritten in concise Portuguese around the original challenge, with setup, testing, API, decisions, issues/impact/recommendations and actual AI use.
-- The introduction links the supplied, unchanged `docs/passos_desafio.pdf` and `docs/arquitetura_aloia.png`, the original SPEC, this live spec and AGENT.md. Attachments are development references; application requirements and behavior are unchanged.
-- Fresh verification: 290 tests in 9 suites and API/web builds pass; attachment SHA-256 matches and README local links pass. Local PostgreSQL and ERP lookup are available; API, UI and Vite proxy respond 200.
-- README and attachments published on `agent/aloia-rfq-reliability` at `950d415955fac9ee5f8a4cb7b4474b0032a487c5`, verified against origin. Revision handoff: `outputs/aloia-readme-handoff.md`.
+The user approved this design in chat. Initial commits stay untouched; all previous and new changes
+must be visible uncommitted against original 2e810cf in a separate VS Code review branch. This
+explicit instruction overrides automatic commit/push for this refinement and updates SC-005 accordingly.
+
+- **FR-029**: Use the supplied Aloia logo unchanged and replace Central de cotações with CONTROLE RFQ.
+- **FR-030**: Keep the list within the viewport with internal table scrolling and sticky column headers;
+  preserve usable filters and pagination, keyboard access and small-screen access without clipping.
+- **FR-031**: Move RFQ navigation to an accessible eye action beside status; RFQ ID is plain text.
+  Do not invent general RFQ editing: only item quote/no-quote API operations currently exist.
+- **FR-032**: Filter all RFQs by partial RFQ ID, customer name/code and quotation status before pagination.
+  Sort each visible data column in both directions (RFQ, customer, item count, quotation state),
+  with stable ties and validated sort fields. Changing filters/order resets page 1; back from detail preserves them.
+- **FR-033**: Use one Cotação column with no separate ERP column (latest user adjustment). Display “Cotação enviada ao ERP” only for confirmed sent delivery. With not_sent, retain the quotation label, including READY = “Pronta para envio”; other delivery states show progress/failure. Keep the domain states separate internally and explain the READY filter covers ready or sent quotes. CLOSED without delivery remains reddish; canceled is an item state. OPEN never means sent; READY and sent may coexist.
+- **FR-034**: Manual Consultar situação shows loading, success with refresh time, and failure feedback.
+  Polling must not generate success notifications or silently claim success when a request fails.
+- **FR-035**: Provide architecture TXT covering entities/keys/relations, transactional webhook ledger,
+  observable ERP processing state, quotation formula/API and simulated ERP; no quotation form is implied.
+- **FR-036**: Open review branch in VS Code with complete prior/new diff against original and no new commits,
+  preserving original published branch/history. Run the review app locally and document exact location.
+
+### Refinement acceptance
+1. RFQ/customer/status filters combine across pages; no match shows an empty state and reset control.
+2. Each data column sorts ascending/descending globally; invalid query/sort values return 400.
+3. At desktop and phone sizes, list rows scroll within the table, headers/actions remain available,
+   logo and CONTROLE RFQ appear, eye action works with keyboard and ID is not the navigation link.
+4. READY + sent displays “Cotação enviada ao ERP” in Cotação, without an ERP column; READY + not_sent remains “Pronta para envio”. Active/failure states never claim confirmed delivery; CLOSED without submission retains red treatment.
+5. Manual refresh visibly progresses to success or error; automatic polling does not emit manual notices.
+6. TXT correctly distinguishes event transaction completion from durable ERP progress and describes
+   current API-only quotation; review HEAD remains original, staged content empty, prior branch unchanged.
+
+## Refinement verification record — 2026-11-07
+
+- 322 automated tests in 12 suites pass; API and web builds pass.
+- Current backend coverage: 96.70% lines / 97.24% branches; RFQ and ERP have 100% lines.
+- 24 new PostgreSQL list tests cover global filters/order, validation, status parity and read-snapshot concurrency.
+- 8 frontend boundary/state tests cover query parameters, navigation state and real QueryObserver completion/error/cancellation behavior.
+- Edge verifies combined/empty filters, both order directions, page/back preservation, keyboard eye navigation, sticky header, internal scrolling, desktop and 390×844 mobile.
+- Real API refresh success and isolated loading/error/retry/polling checks pass. The reproduced query/mutation race is fixed by excluding simultaneous actions; the independent reviewer verified the fix.
+- Logo matches the supplied bytes. Architecture TXT verified against actual entities and services.
+- Final convergence checked 36 FR, 31 acceptance scenarios, 5 SC (including explicit no-commit override), the 8 original architecture decisions plus 5 refinement execution decisions, and 5 constitution principles: zero missing/partial/contradictory/unrequested findings; no corrective tasks appended.
+- Review HEAD remains original 2e810cf; content staged is empty; published checkout remains clean at efe2cd1. VS Code shows the Working Tree diff on agent/aloia-rfq-review.
+- Local UI 5174 and its API/database query through the proxy returned 200 after validation. Existing application data/ERP were preserved.
+- See outputs/aloia-rfq-ui-review-handoff.md for files, evidence and limits.
+
+## Single-column adjustment verification — 2026-11-07
+
+- User explicitly requested removal of the ERP column and “Cotação enviada ao ERP”. FR-032/033 and refinement acceptance 4 reflect this superseding presentation choice.
+- The display uses confirmed submission state; READY/not_sent does not claim delivery. Progress/failure stays visible in Cotação. The detail heading uses the same label.
+- 15 focused frontend tests pass after observing 7 RED cases; web TypeScript/Vite build and diff check pass.
+- Browser verified 5 columns, sent wording and order SO-1005 in detail, READY filter with ready/sent wording, and 390×844 viewport with page height/width equal to viewport.
+- T017 convergence: changed requirements and acceptance are satisfied; no corrective work remains. Backend API/domain were not changed; the earlier full-suite/coverage record is historical, not a new measurement for this adjustment.
+
+## Approved reviewer demo — 2026-11-08
+- FR-037: Local demo startup creates RFQ-DEMO-OPEN, PARTIAL, READY, MIXED, CLOSED and INVALID with the approved item states. READY and MIXED have no submission and can be sent manually. No automatic ERP submission.
+- FR-038: Demo mode is explicit in .env.example, disabled when absent and forbidden in production. Repeated/concurrent startup preserves existing RFQs, edits and submissions. Each scenario is atomic; a failed initialization is retryable. DEMO_ROUND optionally adds a stable suffix for new examples without resetting history.
+- FR-039: README documents startup, each RFQ, manual sending, new rounds, webhook commands and isolated automated tests; tests prove allowed/blocked submissions and preservation.
+
+## Approved integration and documentation — 2026-11-08
+
+- The user now explicitly authorizes committing the reviewed changes, merging them with the concise README/PDF/architecture, and publishing the result to the principal branch of their repository. This supersedes the earlier no-commit review restriction (FR-036 and the temporary SC-005 override).
+- The review's application behavior, filters, quotation presentation and demo scenarios remain authoritative. The concise README incorporates their current usage instructions and references the unchanged supplied `docs/passos_desafio.pdf` and `docs/arquitetura_aloia.png`.
+- The user's removal of old generated plans, screenshots and handoffs is preserved. The supplied architecture image replaces the former TXT/Excalidraw deliverables as the current architecture reference (superseding the documentation format in FR-035). A fresh integration handoff records current evidence; historical validation entries above remain historical.
+- `origin` is `femedici/aloia-challenge-rfq`; neither main nor master existed remotely at inspection. Publish the complete integrated version on `main`. Do not push to `upstream`, change repository visibility/access, rewrite history or remove worktrees.

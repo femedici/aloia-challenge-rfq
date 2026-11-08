@@ -1,3 +1,4 @@
+import { RfqDemoService } from './rfq-demo.service';
 import { RfqSubmission } from '../erp/rfq-submission.entity';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -12,7 +13,7 @@ import { RfqEventRecord } from './rfq-event.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([Rfq, RfqItem, RfqEventRecord, RfqSubmission])],
   controllers: [WebhookController, RfqController, ItemsController],
-  providers: [RfqService],
+  providers: [RfqService, RfqDemoService],
   exports: [RfqService],
 })
 export class RfqModule {}

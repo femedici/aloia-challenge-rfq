@@ -111,3 +111,37 @@ export function validatePagination(page: unknown, pageSize: unknown): void {
     throw new BadRequestException('page resulta em um offset fora do limite seguro');
   }
 }
+
+export interface RfqListOptions {
+  rfq?: string;
+  customer?: string;
+  status?: 'INVALID' | 'OPEN' | 'IN_PROGRESS' | 'READY' | 'CLOSED';
+  sortBy: 'rfqId' | 'customerName' | 'itemCount' | 'status' | 'submissionStatus' | 'createdAt';
+  sortDirection: 'asc' | 'desc';
+}
+
+export function parseRfqListOptions(value: unknown): RfqListOptions {
+  object(value, 'query');
+  for (const field of ['rfq', 'customer']) {
+    if (value[field] === undefined) continue;
+    text(value[field], field, true);
+    if ((value[field] as string).length > 200) throw new BadRequestException(`${field} deve ter até 200 caracteres`);
+  }
+  const choices = {
+    status: ['INVALID', 'OPEN', 'IN_PROGRESS', 'READY', 'CLOSED', ''],
+    sortBy: ['rfqId', 'customerName', 'itemCount', 'status', 'submissionStatus', 'createdAt'],
+    sortDirection: ['asc', 'desc'],
+  };
+  for (const [field, allowed] of Object.entries(choices)) {
+    if (value[field] !== undefined && (typeof value[field] !== 'string' || !allowed.includes(value[field] as string))) {
+      throw new BadRequestException(`${field} inválido`);
+    }
+  }
+  return {
+    rfq: (value.rfq as string | undefined)?.trim(),
+    customer: (value.customer as string | undefined)?.trim(),
+    status: (value.status || undefined) as RfqListOptions['status'],
+    sortBy: (value.sortBy ?? 'createdAt') as RfqListOptions['sortBy'],
+    sortDirection: (value.sortDirection ?? 'desc') as RfqListOptions['sortDirection'],
+  };
+}

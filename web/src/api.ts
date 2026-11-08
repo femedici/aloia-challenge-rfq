@@ -3,7 +3,18 @@ export interface RfqSummary {
   customerName: string;
   itemCount: number;
   status: string;
+  submissionStatus: Submission['status'];
   createdAt: string;
+}
+
+export type RfqSortField = 'rfqId' | 'customerName' | 'itemCount' | 'status' | 'submissionStatus' | 'createdAt';
+
+export interface RfqListOptions {
+  customer?: string;
+  rfq?: string;
+  status?: string;
+  sortBy?: RfqSortField;
+  sortDirection?: 'asc' | 'desc';
 }
 
 export interface RfqItem {
@@ -64,7 +75,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listRfqs: (page = 1, pageSize = 20) => request<RfqSummary[]>(`/rfqs?page=${page}&pageSize=${pageSize}`),
+  listRfqs: (page = 1, pageSize = 20, options: RfqListOptions = {}) => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    for (const [key, value] of Object.entries(options)) {
+      if (value) params.set(key, value);
+    }
+    return request<RfqSummary[]>(`/rfqs?${params}`);
+  },
   getRfq: (rfqId: string) => request<Rfq>(`/rfqs/${encodeURIComponent(rfqId)}`),
   noQuote: (rfqId: string, lineNumber: number) =>
     request(`/rfqs/${encodeURIComponent(rfqId)}/items/${lineNumber}/no-quote`, { method: 'POST' }),

@@ -7,6 +7,11 @@ unknown RFQ/item 404; forbidden transition/submit 409.
 - POST /webhooks/rfq: existing rfq.created or rfq.item_canceled; 200 {ok:true}, also on duplicates.
 - GET /rfqs?page=1&pageSize=20: retain existing summary array response; page/pageSize positive
   safe integers, pageSize <=100. UI can request next page; empty last page has usable Back.
+  Approved refinement: optional rfq/customer literal case-insensitive substring filters (customer
+  name or code), exact quotation status filter, sortBy rfqId/customerName/itemCount/status/
+  submissionStatus/createdAt and sortDirection asc/desc. Filters/order precede pagination;
+  default remains createdAt DESC then rfqId ASC. Each row adds submissionStatus with not_sent
+  when no submission exists. No ERP filter or new list endpoint is introduced.
 - GET /rfqs/:rfqId: existing fields/items/status plus `submission`:
   {status: not_sent|pending|sending|retry_wait|reconciling|sent|failed, attempts,
   startedAt, completedAt, nextAttemptAt, erpOrderId, lastError}. Null timestamps/IDs as applicable.

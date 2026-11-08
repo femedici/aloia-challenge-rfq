@@ -1,5 +1,39 @@
 # Implementation Plan: Aloia RFQ reliability
 
+## Latest presentation adjustment — 2026-11-07
+T017 replaces the separate ERP list column with delivery-aware Cotação labels. Reuse existing submissionStatus and styles: sent is confirmed delivery, not_sent uses the quotation label, other delivery states retain explicit progress/failure wording. Apply the same display label to the detail heading, while keeping its delivery panel and submit guards. Underlying domain statuses/API remain unchanged; filters/order continue to use quotation state, with READY filter wording covering ready or sent quotes. Verify labels with small tests, build and browser; keep review uncommitted.
+
+
+## Approved refinement execution — 2026-11-07
+
+Goal: improve the RFQ list and status clarity, explain actual architecture, and expose the complete
+original-to-current change set uncommitted in VS Code. Stack and persistence model stay unchanged.
+User approved the design; no commit/push in this refinement, including isolated writer branches.
+
+1. T011 root prepares review worktree at 2e810cf, applies the previously published tree as working
+   changes, updates this spec/plan/tasks, and opens VS Code. Intent-to-add permits viewing new-file diffs
+   without staging their content. Original published branch efe2cd1 is preserved.
+2. T012 backend writer owns rfq list/controller, list query validation and targeted PostgreSQL HTTP tests.
+   RED tests for global filtering/order/status parity; GREEN parameterized query before pagination,
+   whitelisted sort keys and additive submissionStatus in existing summary array. No new endpoint/table.
+   Query filtering/ordering needs a SQL projection of quotation state. Returned list/detail/submit
+   retain the authoritative deriveStatus helper; exhaustive real-database parity tests protect this
+   query projection. Page selection and hydration share a read snapshot to avoid status races.
+3. T013 frontend writer independently owns web/src, supplied logo asset and frontend behavior tests.
+   Use filters rfq/customer/status; sortBy rfqId/customerName/itemCount/status/submissionStatus and
+   sortDirection asc/desc. Maintain current listRfqs(page,pageSize,options?) API compatibility.
+   Use fixed viewport list shell, scrolling table/sticky headers, accessible sort/eye controls and
+   delivery-aware Cotação labels. Explicit refresh feedback follows actual refetch result, not polling.
+4. T014 root documents the factual architecture in outputs/aloia-rfq-arquitetura.txt, including the
+   event's atomic visibility and rfq_item UUID FK versus business rfqId links in event/submission.
+5. T015 root applies each isolated writer diff to the review tree, reads it, runs focused then full
+   tests and API/web builds, checks browser desktop/mobile/filter/order/refresh behavior and VS Code.
+   Update handoff and sole tracker from evidence; leave all refinement changes uncommitted.
+
+Commands: npm test -- --runInBand; npm run build; npm --prefix web run build.
+Review API uses 3001 and UI 5174 with existing local database/ERP preserved; no reset or deploy.
+Only root integrates and updates tasks. Writers return changed files, RED/GREEN evidence and risks.
+
 **Branch**: `agent/aloia-rfq-reliability` | **Date**: 2026-11-07 | **Spec**: [spec.md](spec.md)
 **Goal**: Complete all attached RFQ requirements without changing the existing architecture.
 **Architecture**: PostgreSQL arbitrates event/RFQ/submission uniqueness. Existing Nest services
@@ -62,3 +96,6 @@ integer to double precision. A native migration now runs first and uses PostgreS
 preserving existing IDs, quantities and quotations. TypeORM adds its `migrations` metadata table.
 The existing synchronization configuration remains; a full production migration rollout is documented
 as follow-up rather than expanding this feature. Downgrading fractional original quantities is refused.
+
+## Reviewer demo execution — 2026-11-08
+Approved six scenarios; one sequential task because startup, fixtures and assertions share the same contract. Add RfqDemoService to existing RfqModule using OnApplicationBootstrap, DEMO_MODE=true and optional validated DEMO_ROUND. For each RFQ, outer transaction plus existing per-RFQ advisory lock; skip existing RFQ; use transaction-bound RfqService repositories to reuse processEvent/quoteItem/noQuote. Nested transactions keep creation, cancellation and pricing atomic. No new table, endpoint or dependency. Test real isolated PostgreSQL startup, states, submit guards/payload, repeated and concurrent initialization, rollback and fresh rounds; run full suite/builds and local startup. README and .env.example explain reviewer path. Preserve review worktree and no-commit instruction.

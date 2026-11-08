@@ -12,14 +12,16 @@ export class RfqController {
   async list(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query() options: unknown,
   ) {
-    const rfqs = await this.rfqService.list(page, pageSize);
+    const rfqs = await this.rfqService.list(page, pageSize, options);
     return rfqs.map((rfq) => {
       return {
         rfqId: rfq.rfqId,
         customerName: rfq.customerName,
         itemCount: rfq.items.length,
         status: this.rfqService.deriveStatus(rfq.items),
+        submissionStatus: rfq.submissionStatus,
         createdAt: rfq.createdAt,
       };
     });
