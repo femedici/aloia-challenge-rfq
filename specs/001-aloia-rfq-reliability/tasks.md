@@ -165,3 +165,11 @@ these components. UI waits for core verification; documentation and final publis
   - Verification: normalize extracted PDF text and Markdown and compare for exact equality; check every local README/Markdown link, PDF absence and git diff --check.
   - Evidence: full two-page text matches after formatting/whitespace normalization; local links exist. Documentation only; application tests/builds not rerun.
   - Blocker: none; next: none within conversion. Publication verified against origin/main at delivery.
+
+## Phase 13: Original localhost address — 2026-11-08
+- [x] T022 Restore the original localhost:5173 development address.
+  - Status: done; agent: root; dependencies: T021; files: README.md, live spec and this tracker; runtime: existing root Vite process.
+  - Acceptance: README uses the original Vite command and localhost:5173; the local interface and API proxy respond on that address.
+  - Verification: Vite startup output, HTTP GET to localhost:5173 and /api/rfqs, local Markdown links and git diff --check.
+  - Evidence: Vite started with the unmodified npm dev script and reported http://localhost:5173/. Interface HTML and proxied /api/rfqs returned HTTP 200; README links and unchanged application/configuration scope verified. Full application suites/builds not repeated for this documentation/runtime adjustment.
+  - Blocker: none; next: none within the address adjustment. Publication checked against origin/main at delivery.

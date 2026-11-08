@@ -228,3 +228,8 @@ explicit instruction overrides automatic commit/push for this refinement and upd
 - At the user's request, `docs/passos_desafio.md` replaces the PDF as the current development steps reference. Its complete text matches the original two-page PDF after removing formatting and joining wrapped lines.
 - README links point to Markdown; the PDF is removed from the current tree. The architecture image is unchanged. The link to the integration handoff removed by the user in `05c5509` is also removed; no handoff file is recreated.
 - Documentation-only change: verify content parity, local links and Git diff; application tests/builds are not rerun.
+
+## Original local address restored — 2026-11-08
+
+- README uses `npm --prefix web run dev` and `http://localhost:5173`, as requested. Existing Vite defaults already select localhost and port 5173; no application or configuration changes are necessary.
+- Only the root Vite server was restarted. Vite reported the requested URL; the interface and proxied RFQ list returned HTTP 200. API, database and ERP processes were preserved.

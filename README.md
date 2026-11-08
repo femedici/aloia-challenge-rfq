@@ -37,10 +37,10 @@ npm run start:dev
 Em outro terminal:
 
 ```bash
-npm --prefix web run dev -- --host 127.0.0.1
+npm --prefix web run dev
 ```
 
-Abra [http://127.0.0.1:5173](http://127.0.0.1:5173). Por padrão, a API usa a porta `3000` e o ERP, `4000`. Se a porta do ERP estiver ocupada, defina `ERP_PORT=4001` e `ERP_BASE_URL=http://localhost:4001` no `.env` antes de iniciar o Compose.
+Abra [http://localhost:5173](http://localhost:5173). Por padrão, a API usa a porta `3000` e o ERP, `4000`. Se a porta do ERP estiver ocupada, defina `ERP_PORT=4001` e `ERP_BASE_URL=http://localhost:4001` no `.env` antes de iniciar o Compose.
 
 O ambiente é local: o proxy do Vite injeta a chave da API sem expô-la no navegador, mas não substitui autenticação de usuários. O ERP simulado guarda pedidos em memória; reiniciá-lo perde esse histórico.
 
