@@ -46,7 +46,7 @@ Abra [http://localhost:5173](http://localhost:5173). Por padrão, a API usa a po
 
 O ambiente é local: o proxy do Vite injeta a chave da API sem expô-la no navegador, mas não substitui autenticação de usuários. O ERP simulado guarda pedidos em memória; reiniciá-lo perde esse histórico.
 
-## Como testar
+### Como testar
 
 Com `DEMO_MODE=true` (padrão do `.env.example`), a API prepara seis exemplos locais ao iniciar, sem enviar pedidos ao ERP:
 
@@ -89,7 +89,7 @@ npm --prefix web run build
 
 Os testes de integração precisam do PostgreSQL configurado em `DATABASE_URL`, com permissão para criar e remover schemas. Cada execução usa schemas próprios. Para medir cobertura, execute `npm test -- --runInBand --coverage --collectCoverageFrom='src/**/*.ts'`.
 
-## API e autenticação
+### API e autenticação
 
 Todos os endpoints exigem `X-Api-Key`. O webhook também exige `X-Signature: sha256=<hex>`, calculada com HMAC-SHA256 sobre o corpo bruto usando `WEBHOOK_SECRET`. A exigência de chave no webhook é uma decisão adicional à SPEC original. O ERP usa `Authorization: Bearer <ERP_API_TOKEN>`.
 
@@ -109,13 +109,32 @@ O primeiro submit exige `READY`; fora disso, retorna `409`. Submissões em andam
 
 ## Decisões e trade-offs
 
-O PostgreSQL controla a unicidade e a concorrência. Eventos ficam em `rfq_event`, com payload e timestamps; criação, cancelamento e conclusão são processados na mesma transação. Cancelamentos antecipados ficam registrados para aplicação quando o RFQ chegar.
+Mantive a arquitetura existente e desenhei o modelo de dados e os fluxos para separar três momentos: recebimento do evento, tratamento da RFQ e envio ao ERP. Essa separação orientou a criação de duas tabelas, cada uma com uma responsabilidade:
 
-Cada RFQ pode ter uma única `rfq_submission`, com cópia dos itens cotados, tentativas e resultado. Um worker no Nest processa os envios, sem fila externa. A submissão congela a cotação; cancelamentos posteriores permanecem no histórico local e não alteram o pedido no ERP.
+- **`rfq_event`: histórico dos eventos recebidos.** Guarda `eventId`, `rfqId`, tipo, conteúdo e horários de recebimento e conclusão. Uma RFQ pode ter vários eventos. A associação pelo `rfqId` permite registrar um cancelamento antes de a RFQ existir, sem criar um pedido incompleto.
+- **`rfq_submission`: controle do envio ao ERP.** Usa `rfqId` como chave primária, permitindo no máximo uma submissão por RFQ. Guarda o conteúdo enviado, as tentativas, a situação, os erros e o identificador retornado pelo ERP. É criada somente quando o envio é solicitado e a RFQ está `READY`.
 
-O worker consulta o ERP antes do envio. `429` respeita `Retry-After`; `503` permite nova tentativa porque o contrato garante que nada foi gravado. `400`, `401` e `422` encerram o envio com erro. Timeout ou resposta incerta levam à reconciliação: consultar até encontrar o pedido, sem repetir o POST. Um GET vazio não prova que o envio anterior falhou, então a submissão pode exigir investigação manual.
+Separei essas tabelas porque processar um webhook não significa concluir o envio ao ERP. Cada operação tem seu próprio estado e tempo de execução.
 
-Assumi que `eventId` é globalmente único e que o ERP mantém os pedidos aceitos disponíveis para consulta. Login, múltiplos fornecedores por item e alteração de pedidos já enviados seguem fora do escopo.
+Para garantir idempotência, usei unicidade no PostgreSQL, transações e locks por RFQ. Consultar se um evento existe antes de inseri-lo não impediria duas requisições simultâneas de processarem a mesma entrega. O registro do evento e suas alterações são confirmados juntos; se a transação falhar, uma reentrega pode tentar novamente. Tratei `eventId` como globalmente único e mantive os registros sem expiração automática.
+
+Na submissão, salvo uma cópia dos itens `quoted` e bloqueio alterações da cotação. Isso preserva o conteúdo que será enviado, mesmo que o estado local mude depois.
+
+Escolhi um worker no próprio Nest, com progresso persistido no banco, sem adicionar uma fila externa. Isso simplifica a execução do desafio, ao custo de consultar periodicamente o PostgreSQL para encontrar envios pendentes.
+
+Após timeout ou resposta incerta, priorizei evitar duplicatas: o sistema consulta o ERP sem repetir o POST. Uma consulta vazia não prova que a tentativa anterior deixou de executar. O trade-off é que uma submissão pode permanecer em reconciliação e exigir investigação manual.
+
+## Suposições
+
+Para os casos sem comportamento completamente definido, adotei estas regras:
+
+1. **Cancelamento e edição durante o envio:** a criação da submissão é o ponto de corte. Depois dela, preços e ações de “não cotar” ficam bloqueados. Cancelamentos continuam atualizando o histórico e os itens locais, mas não alteram o conteúdo já separado para o ERP.
+
+2. **Primeira criação da RFQ:** considerei válida a primeira criação efetivamente processada sob o controle de concorrência, e não a de menor `occurredAt`. Criações posteriores do mesmo `rfqId` não substituem os dados, mesmo com outro `eventId`.
+
+3. **Item inválido ou inexistente:** um item `invalid` permanece nesse estado. Cancelamentos de RFQs ainda inexistentes ficam registrados para aplicação posterior; se a linha não existir na RFQ criada, preservo o evento sem inventar um item.
+
+4. **Retomada após falha:** uma rejeição definitiva encerra a submissão; não implementei correção e reabertura do envio da mesma RFQ. Para resultados desconhecidos, também não assumi um prazo após o qual seria seguro reenviar: mantenho a reconciliação.
 
 ## Problemas encontrados
 
@@ -133,8 +152,8 @@ Corrigi os problemas abaixo por afetarem a consistência dos dados, os valores d
 
 ## Como usei IA
 
-Usei o Codex para esclarecer dúvidas, investigar o código existente e entender os fluxos e as regras de negócio. Fiz perguntas sobre possíveis falhas, pedi análises do repositório e discuti alternativas para cancelamento, idempotência e integração com o ERP.
+Usei o Codex para formular perguntas, investigar o repositório e discutir alternativas de solução. A partir dessas análises, estruturei a spec com objetivos, restrições e critérios de sucesso e falha. Registrei as orientações no [AGENT.md](AGENT.md) e organizei especificação, decisões e tarefas com o Spec Kit.
 
-Com esse entendimento, estruturei a especificação com objetivos, restrições e critérios de sucesso e falha. Registrei as orientações no [AGENT.md](AGENT.md) e usei o Spec Kit para organizar a spec, as decisões e as tarefas.
+Durante a implementação, questionei e corrigi propostas de entidades e relacionamentos, principalmente a separação entre eventos recebidos e submissões ao ERP. Revisei como as duas novas tabelas se associavam à RFQ pelo `rfqId` e validei a modelagem com cenários de criação, cancelamento antecipado, concorrência e envio.
 
-Na implementação, usei agentes separados por domínio, ERP, interface e revisão. Acompanhei as alterações, questionei as soluções e validei o resultado com testes de sucesso, erro, concorrência e prevenção de duplicatas, além de conferir a aplicação localmente. Os [passos do desenvolvimento](docs/passos_desafio.md) detalham esse processo.
+Também revisei trechos da spec que divergiam do pedido ou do comportamento implementado. Acompanhei o trabalho dos agentes com revisão de código, testes de sucesso e erro e verificação local da aplicação. Os [passos do desenvolvimento](docs/passos_desafio.md) detalham esse processo.
