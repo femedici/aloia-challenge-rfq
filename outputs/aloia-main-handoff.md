@@ -46,7 +46,9 @@ Destino: `git@github.com:femedici/aloia-challenge-rfq.git` (`origin`). O remoto 
 
 A revisão, que estava sem commits sobre `2e810cf`, foi registrada em `4c98836` na branch `agent/aloia-rfq-review`. A documentação já estava publicada em `agent/aloia-rfq-reliability` (`950d415` e `5f19c24`). O merge reúne os dois históricos, resolvendo conflitos em favor do código revisado e da documentação concisa.
 
-Estado neste registro: validação integrada concluída; o fechamento do merge e a publicação de `main` serão registrados abaixo após verificação remota.
+Merge publicado: `e75de7a13fa4f68406df819dd1edbe06d352efc5`. O push atômico publicou `origin/main` e atualizou `origin/agent/aloia-rfq-reliability` no mesmo commit; os hashes remotos foram conferidos. O GitHub confirmou **Default branch changed to main**, e `git ls-remote --symref origin HEAD` confirmou `refs/heads/main`.
+
+T020 concluída, sem tarefas pendentes ou bloqueadas nesta integração. O fechamento deste registro, spec e tracker segue em commit documental posterior ao merge, sem alteração de código. `main` acompanha `origin/main`; nenhuma branch `master` foi criada.
 
 ## Execução local e limites
 

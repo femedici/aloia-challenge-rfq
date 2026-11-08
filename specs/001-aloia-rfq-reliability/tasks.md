@@ -150,9 +150,10 @@ these components. UI waits for core verification; documentation and final publis
   - Verification: source hashes and local links; 290 tests and both builds passed before publication.
   - Evidence: documentation published at 950d415, closure at 5f19c24; remapped here to preserve the review branch's existing T011–T018 identities.
   - Blocker: none; next: retain in the integrated version.
-- [ ] T020 Integrate the reviewed tree with the new README/attachments and publish the validated result on origin/main.
-  - Status: in_progress; agent: root; dependencies: T018,T019; files: reviewed application/tests, README.md, docs/, live spec/tracker and outputs/aloia-main-handoff.md.
+- [x] T020 Integrate the reviewed tree with the new README/attachments and publish the validated result on origin/main.
+  - Status: done; agent: root; dependencies: T018,T019; files: reviewed application/tests, README.md, docs/, live spec/tracker and outputs/aloia-main-handoff.md.
   - Acceptance: preserve the review's code and intentional artifact removals, combine concise documentation with current demo instructions, resolve conflicts, pass tests/builds and verify main's remote commit.
   - Verification: compare integrated source bytes against the review snapshot; full Jest/API/web builds; Markdown links, attachment hashes, local API/UI, Git ancestry and remote refs.
   - Evidence: review snapshot committed as 4c98836 after 347 tests/13 suites and both builds passed; merge conflicts resolved using reviewed source and the concise README. No changes to the original upstream repository.
-  - Blocker: none; next: validate the integrated tree, commit the merge, publish main and verify the repository default branch.
+  - Evidence: integrated tree passed 347 tests/13 suites and both builds; 111 review files and attachment bytes match; original SPEC/fake-erp unchanged. Browser filter/detail/manual refresh and local HTTP checks pass. Merge e75de7a published atomically to origin/main and origin/agent/aloia-rfq-reliability; remote hashes match. GitHub confirmed main as default; ls-remote HEAD points to main.
+  - Blocker: none; next: none within this integration. No deploy, force push, upstream changes or worktree cleanup.

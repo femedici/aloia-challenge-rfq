@@ -215,3 +215,10 @@ explicit instruction overrides automatic commit/push for this refinement and upd
 - The review's application behavior, filters, quotation presentation and demo scenarios remain authoritative. The concise README incorporates their current usage instructions and references the unchanged supplied `docs/passos_desafio.pdf` and `docs/arquitetura_aloia.png`.
 - The user's removal of old generated plans, screenshots and handoffs is preserved. The supplied architecture image replaces the former TXT/Excalidraw deliverables as the current architecture reference (superseding the documentation format in FR-035). A fresh integration handoff records current evidence; historical validation entries above remain historical.
 - `origin` is `femedici/aloia-challenge-rfq`; neither main nor master existed remotely at inspection. Publish the complete integrated version on `main`. Do not push to `upstream`, change repository visibility/access, rewrite history or remove worktrees.
+
+### Integration verification record
+
+- Review and integrated snapshots both passed 347 tests in 13 suites plus API/web builds. 111 review files match byte-for-byte; attachments match the supplied originals. Original SPEC and fake ERP remain unchanged.
+- Browser checks confirm the reviewed filters, detail navigation, READY send availability and manual refresh success. API/UI/proxy return 200. Existing data and ERP history were preserved.
+- Merge `e75de7a13fa4f68406df819dd1edbe06d352efc5` was published to origin/main and the reliability branch; remote refs matched the local commit. GitHub confirmed the default branch changed to main, and remote HEAD resolves to main.
+- T020 is complete. The current integration record is `outputs/aloia-main-handoff.md`; the final documentation closure follows the verified merge without source changes.
