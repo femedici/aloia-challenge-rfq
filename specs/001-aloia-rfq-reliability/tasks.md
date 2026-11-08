@@ -157,3 +157,11 @@ these components. UI waits for core verification; documentation and final publis
   - Evidence: review snapshot committed as 4c98836 after 347 tests/13 suites and both builds passed; merge conflicts resolved using reviewed source and the concise README. No changes to the original upstream repository.
   - Evidence: integrated tree passed 347 tests/13 suites and both builds; 111 review files and attachment bytes match; original SPEC/fake-erp unchanged. Browser filter/detail/manual refresh and local HTTP checks pass. Merge e75de7a published atomically to origin/main and origin/agent/aloia-rfq-reliability; remote hashes match. GitHub confirmed main as default; ls-remote HEAD points to main.
   - Blocker: none; next: none within this integration. No deploy, force push, upstream changes or worktree cleanup.
+
+## Phase 12: Development steps in Markdown — 2026-11-08
+- [x] T021 Replace the development steps PDF with Markdown and publish on main.
+  - Status: done; agent: root; dependencies: T020; files: docs/passos_desafio.md, docs/passos_desafio.pdf (removed), README.md, live spec and this tracker.
+  - Acceptance: preserve the complete original text with Markdown headings/lists; replace README links and remove the PDF from the current tree; preserve the user's handoff removal.
+  - Verification: normalize extracted PDF text and Markdown and compare for exact equality; check every local README/Markdown link, PDF absence and git diff --check.
+  - Evidence: full two-page text matches after formatting/whitespace normalization; local links exist. Documentation only; application tests/builds not rerun.
+  - Blocker: none; next: none within conversion. Publication verified against origin/main at delivery.

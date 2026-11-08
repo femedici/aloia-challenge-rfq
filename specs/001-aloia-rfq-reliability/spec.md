@@ -222,3 +222,9 @@ explicit instruction overrides automatic commit/push for this refinement and upd
 - Browser checks confirm the reviewed filters, detail navigation, READY send availability and manual refresh success. API/UI/proxy return 200. Existing data and ERP history were preserved.
 - Merge `e75de7a13fa4f68406df819dd1edbe06d352efc5` was published to origin/main and the reliability branch; remote refs matched the local commit. GitHub confirmed the default branch changed to main, and remote HEAD resolves to main.
 - T020 is complete. The current integration record is `outputs/aloia-main-handoff.md`; the final documentation closure follows the verified merge without source changes.
+
+## Development steps format — 2026-11-08
+
+- At the user's request, `docs/passos_desafio.md` replaces the PDF as the current development steps reference. Its complete text matches the original two-page PDF after removing formatting and joining wrapped lines.
+- README links point to Markdown; the PDF is removed from the current tree. The architecture image is unchanged. The link to the integration handoff removed by the user in `05c5509` is also removed; no handoff file is recreated.
+- Documentation-only change: verify content parity, local links and Git diff; application tests/builds are not rerun.

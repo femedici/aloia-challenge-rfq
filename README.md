@@ -1,6 +1,6 @@
 # Desafio técnico ALOIA
 
-Desenvolvimento do desafio técnico para a ALOIA. Registrei os [passos que segui](docs/passos_desafio.pdf) e desenhei a [arquitetura e os fluxos do sistema](docs/arquitetura_aloia.png) para entender o problema e orientar a implementação.
+Desenvolvimento do desafio técnico para a ALOIA. Registrei os [passos que segui](docs/passos_desafio.md) e desenhei a [arquitetura e os fluxos do sistema](docs/arquitetura_aloia.png) para entender o problema e orientar a implementação.
 
 A [SPEC.md](SPEC.md) original permanece como referência do desafio proposto pelo Leobaldo. A [spec viva](specs/001-aloia-rfq-reliability/spec.md) registra o escopo adicional e as decisões que adicionei à implementação. O [AGENT.md](AGENT.md) reúne as instruções e os critérios de validação usados para orientar o agente durante o desenvolvimento.
 
@@ -143,4 +143,4 @@ Com mais tempo, priorizaria essas pendências, observabilidade do worker e CI co
 
 ## Como usei IA
 
-Usei Codex para analisar o repositório, discutir a solução e implementar com agentes separados por domínio, ERP, interface e revisão. Organizei regras e critérios no [AGENT.md](AGENT.md) e usei o Spec Kit para manter especificação, decisões e tarefas. Acompanhei a implementação com revisão e testes de sucesso, erro e concorrência. Os [passos do desenvolvimento](docs/passos_desafio.pdf) descrevem esse processo; o [registro da integração](outputs/aloia-main-handoff.md) reúne as verificações da versão final.
+Usei Codex para analisar o repositório, discutir a solução e implementar com agentes separados por domínio, ERP, interface e revisão. Organizei regras e critérios no [AGENT.md](AGENT.md) e usei o Spec Kit para manter especificação, decisões e tarefas. Acompanhei a implementação com revisão e testes de sucesso, erro e concorrência. Os [passos do desenvolvimento](docs/passos_desafio.md) descrevem esse processo.
