@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthController } from './health/health.controller';
 import { RfqModule } from './rfq/rfq.module';
 import { ErpModule } from './erp/erp.module';
+import { PreserveRfqQuantity1794000000000 } from './migrations/1794000000000-preserve-rfq-quantity';
 
 @Module({
   imports: [
@@ -10,6 +11,8 @@ import { ErpModule } from './erp/erp.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
+      migrations: [PreserveRfqQuantity1794000000000],
+      migrationsRun: true,
       synchronize: true,
     }),
     RfqModule,

@@ -1,36 +1,39 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   HttpCode,
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { RfqService } from './rfq.service';
+import { validateWebhookEvent } from '../common/validation';
+import { ApiKeyGuard } from '../common/api-key.guard';
 
 @Controller('webhooks')
+@UseGuards(ApiKeyGuard)
 export class WebhookController {
   constructor(private readonly rfqService: RfqService) {}
 
   @Post('rfq')
   @HttpCode(200)
-  async receive(@Req() req: RawBodyRequest<Request>, @Body() body: any) {
-    const expected =
-      'sha256=' + createHmac('sha256', process.env.WEBHOOK_SECRET!).update(req.rawBody!).digest('hex');
-    if (req.headers['x-signature'] !== expected) {
+  async receive(@Req() req: RawBodyRequest<Request>, @Body() body: unknown) {
+    const secret = process.env.WEBHOOK_SECRET;
+    const signature = req.headers['x-signature'];
+    if (!secret || !req.rawBody || typeof signature !== 'string' || !/^sha256=[a-f0-9]{64}$/.test(signature)) {
+      throw new UnauthorizedException('assinatura inválida');
+    }
+    const expected = createHmac('sha256', secret).update(req.rawBody).digest();
+    if (!timingSafeEqual(Buffer.from(signature.slice(7), 'hex'), expected)) {
       throw new UnauthorizedException('assinatura inválida');
     }
 
-    switch (body?.type) {
-      case 'rfq.created':
-        await this.rfqService.createFromEvent(body);
-        return { ok: true };
-      default:
-        throw new BadRequestException(`tipo de evento não suportado: ${body?.type}`);
-    }
+    validateWebhookEvent(body);
+    await this.rfqService.processEvent(body);
+    return { ok: true };
   }
 }

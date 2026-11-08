@@ -3,7 +3,18 @@ export interface RfqSummary {
   customerName: string;
   itemCount: number;
   status: string;
+  submissionStatus: Submission['status'];
   createdAt: string;
+}
+
+export type RfqSortField = 'rfqId' | 'customerName' | 'itemCount' | 'status' | 'submissionStatus' | 'createdAt';
+
+export interface RfqListOptions {
+  customer?: string;
+  rfq?: string;
+  status?: string;
+  sortBy?: RfqSortField;
+  sortDirection?: 'asc' | 'desc';
 }
 
 export interface RfqItem {
@@ -16,9 +27,20 @@ export interface RfqItem {
   requiredBy: string | null;
   status: string;
   invalidReason: string | null;
+  cancellationReason: string | null;
   warnings: string[];
   unitPriceUsd: string | null;
   totalPriceUsd: string | null;
+}
+
+export interface Submission {
+  status: 'not_sent' | 'pending' | 'sending' | 'retry_wait' | 'reconciling' | 'sent' | 'failed';
+  attempts: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  nextAttemptAt: string | null;
+  erpOrderId: string | null;
+  lastError: string | null;
 }
 
 export interface Rfq {
@@ -27,23 +49,42 @@ export interface Rfq {
   customerName: string;
   status: string;
   items: RfqItem[];
+  submission: Submission;
+}
+
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
+    signal: init?.signal ?? AbortSignal.timeout(15000),
     headers: { 'content-type': 'application/json', ...init?.headers },
+  }).catch(() => {
+    throw new Error('Não foi possível conectar à API. Verifique a conexão e tente novamente.');
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message ?? `Erro ${res.status}`);
+    const message = Array.isArray(body.message) ? body.message.join('. ') : body.message;
+    throw new ApiError(typeof message === 'string' ? message : `A solicitação falhou (HTTP ${res.status}).`, res.status);
   }
   return res.json();
 }
 
 export const api = {
-  listRfqs: () => request<RfqSummary[]>('/rfqs'),
-  getRfq: (rfqId: string) => request<Rfq>(`/rfqs/${rfqId}`),
+  listRfqs: (page = 1, pageSize = 20, options: RfqListOptions = {}) => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    for (const [key, value] of Object.entries(options)) {
+      if (value) params.set(key, value);
+    }
+    return request<RfqSummary[]>(`/rfqs?${params}`);
+  },
+  getRfq: (rfqId: string) => request<Rfq>(`/rfqs/${encodeURIComponent(rfqId)}`),
   noQuote: (rfqId: string, lineNumber: number) =>
-    request(`/rfqs/${rfqId}/items/${lineNumber}/no-quote`, { method: 'POST' }),
+    request(`/rfqs/${encodeURIComponent(rfqId)}/items/${lineNumber}/no-quote`, { method: 'POST' }),
+  submitRfq: (rfqId: string) =>
+    request<Submission>(`/rfqs/${encodeURIComponent(rfqId)}/submit`, { method: 'POST' }),
 };

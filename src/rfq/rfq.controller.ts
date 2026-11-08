@@ -1,4 +1,5 @@
-import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { RfqService } from './rfq.service';
 
@@ -11,24 +12,26 @@ export class RfqController {
   async list(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+    @Query() options: unknown,
   ) {
-    const rfqs = await this.rfqService.list(page, pageSize);
+    const rfqs = await this.rfqService.list(page, pageSize, options);
     return rfqs.map((rfq) => {
-      const pending = rfq.items.filter((i) => i.status === 'pending').length;
-      const quoted = rfq.items.filter((i) => i.status === 'quoted').length;
-      let status = 'CLOSED';
-      if (rfq.items.length === 0) status = 'INVALID';
-      else if (pending === rfq.items.length) status = 'OPEN';
-      else if (pending > 0) status = 'IN_PROGRESS';
-      else if (quoted > 0) status = 'READY';
       return {
         rfqId: rfq.rfqId,
         customerName: rfq.customerName,
         itemCount: rfq.items.length,
-        status,
+        status: this.rfqService.deriveStatus(rfq.items),
+        submissionStatus: rfq.submissionStatus,
         createdAt: rfq.createdAt,
       };
     });
+  }
+
+  @Post(':rfqId/submit')
+  async submit(@Param('rfqId') rfqId: string, @Res({ passthrough: true }) response: Response) {
+    const submission = await this.rfqService.submit(rfqId);
+    response.status(['sent', 'failed'].includes(submission.status) ? 200 : 202);
+    return submission;
   }
 
   @Get(':rfqId')
