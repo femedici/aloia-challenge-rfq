@@ -149,6 +149,12 @@ Corrigi os problemas abaixo por afetarem a consistência dos dados, os valores d
 | Payloads, paginação e configuração sem validação suficiente causavam erros tardios. | Validação na entrada e na inicialização, com respostas claras. |
 | Lista sem navegação além da primeira página ocultava RFQs. | Paginação na interface e feedback acessível. |
 
+## O que faria com mais tempo
+
+- **Entidade de cotação por comprador:** Avaliaria também um formulário de cotação, conforme a necessidade do comprador, assim um item que já tem cotação fica salva e nao precisaria ser feito novamente a cotação, apenas alteração no valor quando necessario. Fazendo o pedido RFQ ser calculado automaticamente pelo serviço, com quantidade e valor por unidade já cadastrado. 
+- **Ampliaria a validação da interface:** automatizaria os fluxos de navegação e envio em CI para o ERP assim que a cotação estiverem completas e não pendentes.
+- **Detalharia as regras de reabertura e cancelamento tardio:** definiria quando uma cotação poderia ser corrigida após rejeição e como apresentar diferenças entre os itens locais e o pedido enviado.
+- **Fortaleceria o contrato com o ERP:** buscaria uma chave idempotente garantida no destino e uma definição sobre a visibilidade dos pedidos na consulta. Isso permitiria recuperar resultados incertos com mais segurança.
 
 ## Como usei IA
 
