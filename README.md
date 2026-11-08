@@ -1,6 +1,8 @@
 # Desafio técnico ALOIA
 
-Desenvolvimento do desafio técnico para a ALOIA. Registrei os [passos que segui](docs/passos_desafio.md) e desenhei a [arquitetura e os fluxos do sistema](docs/arquitetura_aloia.png) para entender o problema e orientar a implementação.
+Desenvolvimento do desafio técnico para a ALOIA. Registrei os passos que segui [neste documento](docs/passos_desafio.md) e representei visualmente a arquitetura e os fluxos do sistema no diagrama abaixo, buscando compreender melhor as problemáticas e orientar a implementação.
+
+![Arquitetura e fluxos do sistema](docs/arquitetura_aloia.png)
 
 A [SPEC.md](SPEC.md) original permanece como referência do desafio proposto pelo Leobaldo. A [spec viva](specs/001-aloia-rfq-reliability/spec.md) registra o escopo adicional e as decisões que adicionei à implementação. O [AGENT.md](AGENT.md) reúne as instruções e os critérios de validação usados para orientar o agente durante o desenvolvimento.
 
@@ -105,7 +107,7 @@ A listagem também aceita `rfq`, `customer`, `status`, `sortBy` e `sortDirection
 
 O primeiro submit exige `READY`; fora disso, retorna `409`. Submissões em andamento retornam `202` e as concluídas, `200`. Campos e respostas estão nos [contratos da API](specs/001-aloia-rfq-reliability/contracts/api.md).
 
-## Decisões e limites
+## Decisões e trade-offs
 
 O PostgreSQL controla a unicidade e a concorrência. Eventos ficam em `rfq_event`, com payload e timestamps; criação, cancelamento e conclusão são processados na mesma transação. Cancelamentos antecipados ficam registrados para aplicação quando o RFQ chegar.
 
@@ -128,19 +130,11 @@ Corrigi os problemas abaixo por afetarem a consistência dos dados, os valores d
 | Payloads, paginação e configuração sem validação suficiente causavam erros tardios. | Validação na entrada e na inicialização, com respostas claras. |
 | Lista sem navegação além da primeira página ocultava RFQs. | Paginação na interface e feedback acessível. |
 
-Permanecem estes pontos:
-
-| Problema | Impacto | Recomendação |
-| --- | --- | --- |
-| `synchronize: true` herdado. | Alterações de entidades mudam o schema automaticamente. | Adotar migrations explícitas antes de produção. |
-| ERP simulado em memória e com rotas administrativas abertas. | Reinício perde pedidos; exposição de rede permite acesso aos dados. | Manter local; usar persistência e proteção no ERP real. |
-| Resultado incerto sem pedido encontrado. | Reconciliação pode continuar indefinidamente. | Investigar no ERP e negociar idempotência garantida no destino. |
-| Chave compartilhada e proxy sem identidade de usuário. | Quem acessa o proxy consegue usar suas rotas. | Proteger o acesso antes de publicar. |
-| Health sem checagem de dependências. | API pode responder com banco ou ERP indisponível. | Adicionar readiness para implantação. |
-| Eventos sem arquivamento e worker sem métricas ou alertas. | Crescimento do banco e investigação manual. | Definir retenção que preserve a deduplicação e monitorar envios. |
-
-Com mais tempo, priorizaria essas pendências, observabilidade do worker e CI com PostgreSQL e testes de interface.
 
 ## Como usei IA
 
-Usei Codex para analisar o repositório, discutir a solução e implementar com agentes separados por domínio, ERP, interface e revisão. Organizei regras e critérios no [AGENT.md](AGENT.md) e usei o Spec Kit para manter especificação, decisões e tarefas. Acompanhei a implementação com revisão e testes de sucesso, erro e concorrência. Os [passos do desenvolvimento](docs/passos_desafio.md) descrevem esse processo.
+Usei o Codex para esclarecer dúvidas, investigar o código existente e entender os fluxos e as regras de negócio. Fiz perguntas sobre possíveis falhas, pedi análises do repositório e discuti alternativas para cancelamento, idempotência e integração com o ERP.
+
+Com esse entendimento, estruturei a especificação com objetivos, restrições e critérios de sucesso e falha. Registrei as orientações no [AGENT.md](AGENT.md) e usei o Spec Kit para organizar a spec, as decisões e as tarefas.
+
+Na implementação, usei agentes separados por domínio, ERP, interface e revisão. Acompanhei as alterações, questionei as soluções e validei o resultado com testes de sucesso, erro, concorrência e prevenção de duplicatas, além de conferir a aplicação localmente. Os [passos do desenvolvimento](docs/passos_desafio.md) detalham esse processo.
