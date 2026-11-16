@@ -75,15 +75,13 @@ Interface apresenta o estado persistido
 
 ## Índice
 
-- [Problema, fluxo e arquitetura — perguntas 1 a 7](#problema-fluxo-e-arquitetura)
-- [Eventos, idempotência e domínio — perguntas 8 a 16](#eventos-idempotência-e-domínio)
-- [Integração e confiabilidade — perguntas 17 a 25](#integração-e-confiabilidade)
-- [Interface e experiência de uso — perguntas 26 a 31](#interface-e-experiência-de-uso)
-- [Preços, segurança e validação — perguntas 32 a 34](#preços-segurança-e-validação)
-- [Uso de IA e decisões — perguntas 35 a 40](#uso-de-ia-e-decisões)
-- [Aprofundamentos pedidos depois — perguntas 41 e 42](#aprofundamentos-pedidos-depois)
-- [Roteiro de demonstração](#roteiro-de-demonstração)
-- [Referências no repositório](#referências-no-repositório)
+- [Problema, fluxo e arquitetura — perguntas 1 a 5](#problema-fluxo-e-arquitetura)
+- [Eventos, idempotência e domínio — perguntas 6 a 13](#eventos-idempotência-e-domínio)
+- [Integração e confiabilidade — perguntas 14 a 22](#integração-e-confiabilidade)
+- [Interface e experiência de uso — perguntas 23 a 27](#interface-e-experiência-de-uso)
+- [Preços, segurança e validação — perguntas 28 a 30](#preços-segurança-e-validação)
+- [Uso de IA e decisões — perguntas 31 a 35](#uso-de-ia-e-decisões)
+- [Aprofundamentos pedidos depois — perguntas 36 e 37](#aprofundamentos-pedidos-depois)
 
 ## Problema, fluxo e arquitetura
 
@@ -93,31 +91,13 @@ O sistema já recebia solicitações de cotação, mas ignorava cancelamentos de
 
 Além disso, o cliente entregava eventos repetidos, simultâneos e fora de ordem. O ERP podia falhar ou gravar um pedido sem responder a tempo. Minha solução tratou esses problemas preservando o histórico, controlando a concorrência e acompanhando o envio até sua confirmação ou falha. Quando não é possível determinar o resultado com segurança, mantém a reconciliação.
 
-### 2. Explique o fluxo completo da aplicação, do início ao fim.
-
-O cliente envia um webhook de criação da RFQ. A API autentica, valida e registra o evento; depois cria a solicitação e seus itens, mantendo os dados originais e normalizados. Cancelamentos recebidos anteriormente também são aplicados.
-
-O comprador trata os itens: cota pela API ou decide não cotar. O status da RFQ é calculado a partir dessas decisões.
-
-Quando não existem pendências e pelo menos um item está cotado, a RFQ fica `READY`. O operador solicita o envio; a API registra uma submissão com uma cópia dos itens cotados. Um worker processa essa submissão, integra com o ERP e registra o resultado. A interface acompanha esse estado.
-
-### 3. Você escolheu essa stack? Por que NestJS, PostgreSQL e React?
-
-A stack já existia no projeto. Minha decisão foi preservá-la e evoluir as garantias do sistema.
-
-NestJS já organizava controllers e services; TypeORM e PostgreSQL atendiam à persistência; React e TanStack Query atendiam à interface e às consultas. Trocar essas tecnologias ampliaria o escopo sem resolver diretamente os problemas principais.
-
-O PostgreSQL teve um papel especialmente importante porque já oferecia transações, unicidade e locks compartilhados entre instâncias.
-
-> **Lembrete:** mantive a stack; não a escolhi do zero.
-
-### 4. Por que não separou em microsserviços ou adicionou uma fila externa?
+### 2. Por que não separou em microsserviços ou adicionou uma fila externa?
 
 O desafio não demonstrava uma necessidade de escala ou isolamento que justificasse essa infraestrutura. Mantive uma aplicação organizada por responsabilidades e um worker dentro do Nest, com progresso persistido no PostgreSQL.
 
 Uma fila externa poderia ajudar na distribuição do trabalho, mas não resolveria sozinha a duplicação no ERP nem o resultado incerto de uma chamada HTTP. Eu reconsideraria essa escolha diante de volume maior, necessidade de escalar o worker separadamente ou isolamento operacional.
 
-### 5. Como você dividiu as responsabilidades no código?
+### 3. Como você dividiu as responsabilidades no código?
 
 Os controllers recebem requisições, aplicam autenticação e validação e encaminham as operações. O serviço de RFQ concentra as regras de criação, cancelamento, cotação, status e submissão.
 
@@ -125,7 +105,7 @@ O cliente ERP cuida da comunicação HTTP e da interpretação das respostas. O 
 
 A interface apresenta o estado e solicita ações. As regras decisivas continuam no servidor, para funcionar mesmo quando alguém chama a API diretamente.
 
-### 6. Por que criou duas tabelas, rfq_event e rfq_submission?
+### 4. Por que criou duas tabelas, rfq_event e rfq_submission?
 
 Porque representam operações diferentes.
 
@@ -140,7 +120,7 @@ Um webhook pode terminar de ser processado muito antes de a cotação ficar pron
 | `rfq_event` | Eventos recebidos e deduplicação |
 | `rfq_submission` | Conteúdo congelado e progresso do envio |
 
-### 7. Isso é Event Sourcing?
+### 5. Isso é Event Sourcing?
 
 Não é Event Sourcing completo. Existe um registro persistente dos eventos recebidos, usado para deduplicação, rastreabilidade e cancelamentos fora de ordem.
 
@@ -148,7 +128,7 @@ Mas o estado operacional também fica nas tabelas de RFQ e itens. Além disso, a
 
 ## Eventos, idempotência e domínio
 
-### 8. Como você impede o processamento repetido do mesmo evento?
+### 6. Como você impede o processamento repetido do mesmo evento?
 
 O `eventId` é único no banco. Tento inseri-lo dentro da mesma transação que aplica o efeito de negócio.
 
@@ -156,7 +136,7 @@ Se a inserção encontra um registro existente, o evento não é reaplicado e a 
 
 Isso evita marcar um evento como processado sem que seu efeito tenha sido confirmado.
 
-### 9. Por que não consultar se o evento existe antes de inserir?
+### 7. Por que não consultar se o evento existe antes de inserir?
 
 Porque existe uma corrida entre a consulta e a gravação. Duas requisições simultâneas podem consultar, ambas encontrar ausência e ambas tentar processar.
 
@@ -164,7 +144,7 @@ A decisão precisa ser arbitrada pelo banco por meio da unicidade. A consulta is
 
 Esse foi um refinamento concreto da abordagem inicial: substituir “consultar e depois registrar” por uma inserção única transacional.
 
-### 10. Se eventId já é único, por que também controlar rfqId?
+### 8. Se eventId já é único, por que também controlar rfqId?
 
 Porque são identidades diferentes. `eventId` identifica um evento; `rfqId` identifica a solicitação de negócio.
 
@@ -172,7 +152,7 @@ O cliente pode mandar outra criação da mesma RFQ com um novo `eventId`. Nesse 
 
 A primeira criação efetivamente processada vence. Isso não significa escolher posteriormente a criação com o menor `occurredAt`.
 
-### 11. Como funciona o cancelamento que chega antes da criação?
+### 9. Como funciona o cancelamento que chega antes da criação?
 
 Registro o cancelamento mesmo quando a RFQ ainda não existe. Quando a criação chega, aplico os cancelamentos conhecidos aos itens, dentro da transação.
 
@@ -180,7 +160,7 @@ Assim não dependo da ordem da rede, não preciso manter uma requisição espera
 
 Se o cancelamento mencionar uma linha que nunca existe, o evento permanece registrado. Se o item já for inválido, ele continua inválido, conforme a regra definida.
 
-### 12. Como você evita conflito entre cotar, cancelar e enviar ao mesmo tempo?
+### 10. Como você evita conflito entre cotar, cancelar e enviar ao mesmo tempo?
 
 As alterações usam um lock transacional por RFQ. Isso serializa operações concorrentes daquela solicitação. O lock é associado ao identificador e funciona inclusive antes de existir uma linha de RFQ no banco.
 
@@ -188,7 +168,7 @@ Se a cotação ocorrer primeiro, o cancelamento pode mudar o item para cancelado
 
 Esse lock também coordena a criação do snapshot de envio com alterações nos itens. A proteção está no backend; desabilitar botões é apenas uma parte da experiência.
 
-### 13. Por que preservar o dado original e guardar o normalizado ao lado?
+### 11. Por que preservar o dado original e guardar o normalizado ao lado?
 
 O original permite investigar exatamente o que o cliente enviou. O normalizado permite comparar e aplicar regras consistentemente.
 
@@ -196,7 +176,7 @@ Por exemplo, `ab-2231/04` e `AB223104` passam a representar a mesma peça. Tamb�
 
 Essa separação mantém rastreabilidade sem obrigar as regras de negócio a trabalhar com dados inconsistentes. Itens possivelmente duplicados recebem aviso; não são apagados automaticamente.
 
-### 14. Qual a diferença entre rejeitar um payload e registrar um item como inválido?
+### 12. Qual a diferença entre rejeitar um payload e registrar um item como inválido?
 
 Um payload malformado viola o contrato da API e recebe erro de validação. Já um item estruturalmente válido pode ter um problema de negócio e ficar registrado como `invalid`, permitindo tratar os demais itens.
 
@@ -204,21 +184,7 @@ Por exemplo, uma quantidade enviada como string viola o formato esperado. Uma qu
 
 A data tem outra regra: uma data inexistente vira `null` com aviso. Ela não invalida automaticamente o item inteiro. A data de necessidade é tratada como data de calendário, sem conversão de fuso que possa mudar o dia.
 
-### 15. Como é calculado o status da RFQ?
-
-O status é derivado dos itens. Não existe uma ação separada de “iniciar cotação”. Itens inválidos ficam fora dessa conta.
-
-| Status | Regra |
-| --- | --- |
-| `INVALID` | Nenhum item válido |
-| `OPEN` | Todos os itens válidos estão pendentes |
-| `IN_PROGRESS` | Existem pendentes e itens já tratados |
-| `READY` | Nenhum pendente e pelo menos um cotado |
-| `CLOSED` | Nenhum pendente e nenhum cotado |
-
-Um cotado com três pendentes ainda não permite envio. Um cotado, um cancelado e um “não cotar” permite, porque todas as decisões foram tomadas e existe algo para enviar.
-
-### 16. Qual a diferença entre RFQ pronta e RFQ enviada?
+### 13. Qual a diferença entre RFQ pronta e RFQ enviada?
 
 `READY` representa a situação da cotação. `sent` representa a confirmação da integração com o ERP.
 
@@ -228,7 +194,7 @@ Também não confundo HTTP com resultado de negócio: o submit pode retornar `20
 
 ## Integração e confiabilidade
 
-### 17. Por que escolheu envio assíncrono?
+### 14. Por que escolheu envio assíncrono?
 
 Porque o ERP é lento e pode exigir espera, novas tentativas e reconciliação. Não faria sentido manter a requisição do usuário aberta durante todo esse processo.
 
@@ -236,7 +202,7 @@ A API registra a intenção de envio no banco e responde. O worker continua o tr
 
 O custo dessa escolha é precisar modelar estados intermediários e explicar o progresso na interface. Em troca, o processamento pode continuar e ser retomado após reinício.
 
-### 18. O envio acontece automaticamente quando a RFQ fica pronta?
+### 15. O envio acontece automaticamente quando a RFQ fica pronta?
 
 Não. Na implementação atual, o operador inicia o envio pelo botão ou pelo endpoint.
 
@@ -244,7 +210,7 @@ Depois dessa solicitação, o processamento, as tentativas seguras e a reconcili
 
 Essa distinção preserva uma ação explícita de envio. Submeter automaticamente quando a RFQ chegar a `READY` seria outra decisão de produto, que precisaria ser especificada.
 
-### 19. Por que salvar um snapshot dos itens cotados?
+### 16. Por que salvar um snapshot dos itens cotados?
 
 Para preservar exatamente o conteúdo autorizado para envio.
 
@@ -252,7 +218,7 @@ Se o worker reconstruísse o pedido a partir dos itens atuais em cada tentativa,
 
 O snapshot contém apenas os itens `quoted`. Os cancelados, inválidos e não cotados continuam no histórico e no detalhe, mas não entram no pedido do ERP.
 
-### 20. O que acontece se o usuário clicar duas vezes ou duas instâncias processarem o mesmo envio?
+### 17. O que acontece se o usuário clicar duas vezes ou duas instâncias processarem o mesmo envio?
 
 A submissão é única por `rfqId`. A criação ocorre sob lock, e uma chamada repetida retorna a submissão existente.
 
@@ -260,7 +226,7 @@ No worker, há outro lock no PostgreSQL para impedir processamento simultâneo d
 
 Antes de chamar o ERP, o worker persiste a intenção de envio. Se o resultado ficar incerto, ele muda para consulta e não repete o POST às cegas. São proteções complementares.
 
-### 21. Por que você não repete o POST quando ocorre timeout?
+### 18. Por que você não repete o POST quando ocorre timeout?
 
 Porque timeout significa ausência de resposta dentro do prazo, não ausência de gravação.
 
@@ -268,7 +234,7 @@ O ERP do desafio pode criar o pedido e demorar para responder. Como ele não gar
 
 Por isso classifico esse resultado como incerto e consulto o ERP pelo identificador externo até conseguir confirmar o que aconteceu.
 
-### 22. Mas se a consulta não encontrou o pedido, por que não enviar novamente?
+### 19. Mas se a consulta não encontrou o pedido, por que não enviar novamente?
 
 Porque uma consulta vazia não prova que a tentativa anterior deixou de executar. Ela pode ainda estar em andamento.
 
@@ -278,7 +244,7 @@ Existe inclusive uma janela em que a aplicação registra `sending` e cai antes 
 
 > **Ponto central:** a solução troca parte da recuperação automática por segurança contra duplicação quando o resultado é desconhecido.
 
-### 23. Como você diferencia falha permanente, transitória e resultado incerto?
+### 20. Como você diferencia falha permanente, transitória e resultado incerto?
 
 A decisão depende do contrato do ERP, não apenas do código HTTP.
 
@@ -294,7 +260,7 @@ Uso backoff nas tentativas, considerando o maior prazo entre a espera calculada 
 
 Na reconciliação, falhas de consulta preservam a incerteza. A ausência de confirmação não é transformada automaticamente em autorização para reenviar.
 
-### 24. Você garante exactly-once? E o que acontece após reinício?
+### 21. Você garante exactly-once? E o que acontece após reinício?
 
 Não apresentaria a solução como exactly-once universal entre sistemas independentes.
 
@@ -302,7 +268,7 @@ A aplicação persiste o estado e evita duplicação dentro das premissas do con
 
 Essa segurança depende da coordenação no banco e do comportamento do ERP. O ERP simulado guarda pedidos em memória e perde esse histórico ao reiniciar, então ele também limita a durabilidade da demonstração.
 
-### 25. Pode alterar a cotação ou cancelar um item depois de solicitar o envio?
+### 22. Pode alterar a cotação ou cancelar um item depois de solicitar o envio?
 
 A criação da submissão é o ponto de corte. Depois dela, alterações de cotação e ações de “não cotar” ficam bloqueadas.
 
@@ -312,7 +278,7 @@ Também não implementei reabertura automática após uma falha definitiva. Corr
 
 ## Interface e experiência de uso
 
-### 26. Por que você melhorou a listagem? Qual era o benefício para o usuário?
+### 23. Por que você melhorou a listagem? Qual era o benefício para o usuário?
 
 A listagem é o ponto de triagem do comprador. Ele precisa localizar uma solicitação, identificar o cliente e entender o que exige atenção antes de abrir o detalhe.
 
@@ -320,7 +286,7 @@ Por isso acrescentei filtros por cliente, RFQ e situação, ordenação, pagina�
 
 O detalhe concentra itens, avisos e informações da integração. Ao voltar, os filtros e a página são preservados durante a navegação, reduzindo repetição de trabalho.
 
-### 27. Por que aplicar filtros no servidor? Não seria mais simples filtrar no React?
+### 24. Por que aplicar filtros no servidor? Não seria mais simples filtrar no React?
 
 Filtrar apenas os registros carregados produziria resultados incompletos. A interface carrega vinte solicitações por página; um RFQ correspondente poderia estar em outra página.
 
@@ -328,7 +294,7 @@ Por isso o servidor filtra e ordena o conjunto antes de paginar. Também existe 
 
 Como o status depende dos itens, uso uma projeção SQL para selecionar os resultados. Há testes de paridade com a regra de domínio para evitar divergências entre lista e detalhe. A seleção e o carregamento dos itens da página usam a mesma transação `REPEATABLE READ`, para enxergarem um retrato consistente durante alterações concorrentes.
 
-### 28. Como a interface apresenta os estados sem confundir o operador?
+### 25. Como a interface apresenta os estados sem confundir o operador?
 
 Antes da submissão, a lista mostra a situação da cotação. Depois, dá destaque ao andamento do envio. No detalhe, mostro o estado da integração, tentativas, próxima execução, erro e identificador confirmado pelo ERP.
 
@@ -348,7 +314,7 @@ Também usei rótulos textuais, mensagens de carregamento, erros e recursos de a
 
 O filtro da listagem considera o estado da cotação. Por isso a opção “Pronta ou enviada ao ERP” também pode incluir RFQs cujo envio já começou ou terminou, enquanto a cotação continua `READY`.
 
-### 29. Por que polling com TanStack Query em vez de WebSocket?
+### 26. Por que polling com TanStack Query em vez de WebSocket?
 
 A biblioteca já existia e o fluxo não precisava de atualização instantânea. No detalhe, consulto a API a cada dois segundos enquanto existe processamento ativo ou uma solicitação de envio ainda precisa ser esclarecida.
 
@@ -356,7 +322,7 @@ Isso atende ao acompanhamento sem adicionar uma conexão persistente e uma infra
 
 O custo é gerar consultas periódicas e ter algum atraso visual. Se o volume de usuários ou a exigência de latência aumentasse, eu avaliaria SSE ou WebSocket com base nessa necessidade.
 
-### 30. O que acontece se o navegador perder a resposta do submit?
+### 27. O que acontece se o navegador perder a resposta do submit?
 
 A interface não assume imediatamente que nada aconteceu. Ela continua consultando a situação para descobrir se a API registrou a submissão.
 
@@ -364,17 +330,9 @@ Enquanto existe incerteza, bloqueia alterações nos itens. Uma nova solicitaç�
 
 É importante distinguir essa repetição do navegador para nossa API de repetir um POST incerto para o ERP: nossa API foi implementada para reconhecer a operação existente.
 
-### 31. A aplicação permite fazer toda a cotação pela tela?
-
-Não. A cotação de fornecedor continua sendo feita pela API, com fornecedor, moeda, custo, MOQ e margem.
-
-A interface permite consultar solicitações e itens, marcar “não cotar”, solicitar envio e acompanhar o resultado.
-
-Um formulário de cotação seria uma evolução possível. Eu explicaria isso claramente na demonstração, sem apresentar como pronta uma funcionalidade que ainda não existe.
-
 ## Preços, segurança e validação
 
-### 32. Como você tratou preços, quantidade mínima e arredondamento?
+### 28. Como você tratou preços, quantidade mínima e arredondamento?
 
 Segui a fórmula da especificação: considero a maior quantidade entre a solicitada e o MOQ para calcular o custo da compra, adiciono encargos e distribuo pela quantidade solicitada. Depois aplico o percentual sobre o custo e o câmbio.
 
@@ -384,7 +342,7 @@ O exemplo da SPEC resulta em USD 35,51 por unidade e USD 106,53 no total. Quando
 
 > **Lembrete:** o campo chamado “margem” segue um acréscimo sobre o custo, conforme a fórmula fornecida. Não é uma fórmula de margem líquida sobre o preço de venda.
 
-### 33. Como você protege as APIs? Isso já equivale a autenticação de usuários?
+### 29. Como você protege as APIs? Isso já equivale a autenticação de usuários?
 
 As rotas exigem uma chave interna. O webhook também valida HMAC-SHA256 sobre o corpo bruto, verificando integridade e autenticidade da mensagem. Acrescentar a chave ao webhook foi uma decisão adicional à especificação original.
 
@@ -392,7 +350,7 @@ No ambiente local, o proxy do Vite injeta a chave para ela não ficar no código
 
 Isso não equivale a login, identidade individual ou autorização por perfil. Esses recursos continuam fora do escopo, e o proxy precisa ser protegido antes de uma exposição pública.
 
-### 34. Como você comprovou que resolveu o problema?
+### 30. Como você comprovou que resolveu o problema?
 
 Transformei os requisitos em cenários observáveis.
 
@@ -404,7 +362,7 @@ Isso é evidência dos cenários cobertos, não prova de ausência de defeitos. 
 
 ## Uso de IA e decisões
 
-### 35. Como você usou IA durante o desenvolvimento?
+### 31. Como você usou IA durante o desenvolvimento?
 
 Usei Codex para investigar a base, levantar dúvidas, discutir alternativas, implementar e revisar.
 
@@ -412,7 +370,7 @@ Estruturei objetivos, restrições e critérios no `AGENT.md`, e usei Spec Kit p
 
 A IA ajudou na execução, mas a aceitação dependia de coerência com o problema, revisão do código e testes de sucesso, falha e concorrência.
 
-### 36. Por que usar especificação e agentes separados em vez de um único prompt pedindo tudo?
+### 32. Por que usar especificação e agentes separados em vez de um único prompt pedindo tudo?
 
 Porque o desafio tinha regras que interagiam: cancelamento, concorrência, cotação e envio. Uma especificação explícita ajudou a manter essas regras consistentes e verificáveis durante as mudanças.
 
@@ -420,15 +378,7 @@ Agentes separados permitiram trabalhar em áreas independentes, mas criaram a ne
 
 O valor não estava em ter mais agentes. Estava em limitar responsabilidades e exigir evidências antes de integrar o trabalho.
 
-### 37. Dê um exemplo concreto de uma proposta que você questionou durante o uso de IA.
-
-Um exemplo foi a deduplicação por consulta antes da inserção. Ao analisar a concorrência, ficou claro que duas requisições poderiam passar pela consulta. A solução passou a usar unicidade transacional no PostgreSQL.
-
-Outro ponto foi separar eventos recebidos de submissões ao ERP. Eles têm ciclos de vida diferentes, e concluir o processamento de um webhook não significa concluir a cotação nem entregar um pedido.
-
-Essas decisões foram verificadas com cenários concretos, e não apenas aceitas porque pareciam convincentes.
-
-### 38. Como você evita que a IA produza testes que apenas confirmem o próprio código?
+### 33. Como você evita que a IA produza testes que apenas confirmem o próprio código?
 
 Parto das regras e dos resultados esperados, não da estrutura interna da implementação.
 
@@ -436,7 +386,7 @@ Por exemplo: dez entregas simultâneas precisam produzir um único efeito; cance
 
 Também verifico efeitos persistidos e chamadas ao ERP, em vez de conferir apenas o status HTTP. Revisão independente ajuda, mas continuo precisando entender por que cada cenário demonstra uma propriedade relevante.
 
-### 39. O que você faria diferente ou priorizaria com mais tempo?
+### 34. O que você faria diferente ou priorizaria com mais tempo?
 
 Priorizaria melhorias ligadas aos riscos restantes: idempotência garantida no ERP, visibilidade operacional das reconciliações e regras de correção após falha definitiva.
 
@@ -444,7 +394,7 @@ Para produção, substituiria a sincronização automática de schema por migrat
 
 Também ampliaria os testes automatizados da interface em CI. Um formulário de cotação entraria conforme a necessidade do comprador. Não começaria adicionando infraestrutura sem evidência de necessidade.
 
-### 40. Qual foi o principal trade-off da sua solução?
+### 35. Qual foi o principal trade-off da sua solução?
 
 Priorizei consistência e prevenção de duplicação diante de um ERP que não oferece idempotência.
 
@@ -456,7 +406,7 @@ A solução resolve os cenários definidos com essa escolha explícita. Para mel
 
 As duas perguntas abaixo reforçam os temas aprofundados após o roteiro inicial. Elas reúnem a explicação completa e a comparação com alternativas, para ensaiar uma resposta contínua.
 
-### 41. O desafio exige idempotência. Como sua implementação resolve isso e por que você escolheu essa abordagem em vez de outra?
+### 36. O desafio exige idempotência. Como sua implementação resolve isso e por que você escolheu essa abordagem em vez de outra?
 
 Idempotência significa que repetir a mesma operação não produz efeitos adicionais. Neste desafio, o cliente pode entregar o mesmo evento várias vezes, inclusive simultaneamente. O resultado precisa continuar sendo uma única aplicação daquele evento.
 
@@ -480,7 +430,7 @@ No envio, mantenho uma submissão única por RFQ, então cliques repetidos retor
 
 **Exemplo para explicar oralmente:** se o mesmo cancelamento chegar dez vezes, o item deve terminar cancelado por uma única aplicação do evento. Se o envio ao ERP perder a resposta, repetir cegamente a chamada pode criar dois pedidos; por isso esse caso exige reconciliação, além da deduplicação local.
 
-### 42. Por que você criou duas tabelas para controlar o estado? Não poderia usar apenas uma?
+### 37. Por que você criou duas tabelas para controlar o estado? Não poderia usar apenas uma?
 
 Separei porque elas controlam processos diferentes, com ciclos de vida e regras próprias.
 
@@ -507,48 +457,3 @@ O custo é manter duas estruturas relacionadas pelo `rfqId`, mas essa separaçã
 | Conclusão | Processamento transacional do evento | Envio confirmado ou falha definitiva |
 | Existe antes da RFQ? | Pode existir, no cancelamento antecipado | É criada após validar a RFQ pronta |
 | Responsabilidade | Deduplicação e tratamento dos eventos | Tentativas, reconciliação e resultado do ERP |
-
-## Roteiro de demonstração
-
-O endereço usado na preparação é [http://127.0.0.1:5173](http://127.0.0.1:5173). Ele depende dos serviços locais em execução; as instruções de inicialização estão no [README do projeto](../README.md).
-
-Na preparação de 15/11/2026, foram criados seis exemplos com o sufixo **`ESTUDO-20261115`**, preservando os dados anteriores. Os estados abaixo são os iniciais e podem mudar quando os exemplos forem usados.
-
-1. Filtrar a listagem por `ESTUDO-20261115` e explicar a organização por solicitação, cliente, quantidade de itens e situação.
-2. Abrir **OPEN**: todos os itens válidos ainda estão pendentes; não é possível enviar.
-3. Abrir **PARTIAL**: existe um item cotado, mas três continuam pendentes; ainda não é `READY`.
-4. Abrir **MIXED**: existe um cotado, um cancelado e um “não cotar”; é possível enviar somente o cotado.
-5. Antes de clicar em **Enviar ao ERP**, explicar o snapshot e a diferença entre cotação pronta e confirmação do pedido.
-6. Solicitar o envio e acompanhar o estado, as tentativas e o identificador quando confirmado. Em modo `chaos`, podem ocorrer esperas e falhas.
-7. Abrir **CLOSED** e **INVALID** para mostrar que ausência de pendências, sozinha, não autoriza envio.
-
-> O exemplo é persistente: depois de submetido, ele não volta ao estado inicial ao reiniciar a API. O ERP falso, por outro lado, perde os pedidos em memória quando reinicia. Para outra rodada de demonstração, seguir a opção `DEMO_ROUND` documentada no README, sem apagar dados existentes.
-
-## Referências no repositório
-
-- [SPEC original: problema e regras do desafio](../SPEC.md)
-- [README: execução, API e decisões](../README.md)
-- [AGENT.md: critérios e decisões orientadoras](../AGENT.md)
-- [Passos do desenvolvimento e uso de IA](../docs/passos_desafio.md)
-- [Spec viva da feature](../specs/001-aloia-rfq-reliability/spec.md)
-- [Tracker de desenvolvimento e evidências históricas](../specs/001-aloia-rfq-reliability/tasks.md)
-- [Serviço de RFQ: eventos, locks, status, cotação e submissão](../src/rfq/rfq.service.ts)
-- [Worker: envio, retry e reconciliação](../src/erp/erp-submission.worker.ts)
-- [Cliente HTTP do ERP](../src/erp/erp.client.ts)
-- [Cálculo de preços](../src/common/price.ts)
-- [Listagem](../web/src/RfqList.tsx)
-- [Detalhe e acompanhamento do envio](../web/src/RfqDetail.tsx)
-- [Rótulos dos estados](../web/src/status-labels.ts)
-
-## Checklist de revisão antes da entrevista
-
-- [ ] Explico o problema e o fluxo sem começar pelos nomes das tecnologias.
-- [ ] Diferencio o que já existia do que acrescentei ou corrigi.
-- [ ] Explico por que consultar antes de inserir não impede uma corrida.
-- [ ] Diferencio evento, RFQ, item e submissão.
-- [ ] Sei dizer quando a RFQ fica `READY` e quando o envio fica `sent`.
-- [ ] Explico por que timeout não autoriza repetir o POST.
-- [ ] Reconheço o custo da reconciliação indefinida e as premissas da solução.
-- [ ] Demonstro a listagem e os estados com os exemplos locais.
-- [ ] Explico o uso de IA com decisões e verificações concretas.
-- [ ] Não apresento evolução planejada como funcionalidade implementada.
